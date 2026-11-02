@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+{% block title %}Campus Location Registry - UPRS{% endblock %}
+
+{% block extra_head %}
+<style>
+.loc-tab-nav {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 12px;
+    overflow-x: auto;
+}
+.loc-tab-btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+.loc-tab-btn.active {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #60a5fa;
+}
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
+}
+.badge-active {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.badge-inactive {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="section" style="max-width:1150px;margin:30px auto;">
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+        <div>
+            <h1>Campus Location & Room Registry</h1>
+            <p>Admin-managed university buildings, floors, registered rooms, and spatial landmarks</p>
+        </div>
+        {% if user.is_staff %}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <a href="{% url 'room_create' %}" class="btn btn-primary" style="padding:10px 18px;font-size:14px;">
+                ➕ Register New Room
+            </a>
+            <a href="{% url 'landmark_create' %}" class="btn btn-secondary" style="padding:10px 18px;font-size:14px;">
+                📍 Add Landmark
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+
+
+    <!-- Tabs Navigation -->
+    <div class="loc-tab-nav">
+        <button class="loc-tab-btn active" onclick="switchLocTab('rooms')">🏛️ Registered Rooms ({{ total_rooms }})</button>
+        <button class="loc-tab-btn" onclick="switchLocTab('landmarks')">📍 Campus Landmarks ({{ landmarks.count }})</button>
+        <button class="loc-tab-btn" onclick="switchLocTab('hierarchy')">🏢 Buildings & Floors</button>
+        <button class="loc-tab-btn" onclick="switchLocTab('equipments')">⚙️ Registered Equipment ({{ equipments.count }})</button>
+    </div>
+
+    <!-- TAB 1: REGISTERED ROOMS -->
+    <div id="tab-rooms" class="tab-content active">
+        <div class="contributors-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h2 style="color:white;margin:0;">Registered University Rooms</h2>
+                <span style="color:var(--text-secondary);font-size:13px;">Students can only report within registered rooms</span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                {% for r in rooms %}
+                <div class="contributor-row" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                    <div style="display:flex;align-items:center;gap:14px;flex:1;">
+                        <span style="font-size:22px;">🚪</span>
+                        <div>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <strong style="color:white;font-size:15px;">Room {{ r.room_number }}</strong>
+                                <span style="color:var(--text-secondary);font-size:13px;">• {{ r.name }}</span>
+                                {% if r.is_active %}
+                                <span class="badge-active">Active</span>
+                                {% else %}
+                                <span class="badge-inactive">Deactivated</span>
+                                {% endif %}
+                            </div>
+                            <div style="color:var(--text-secondary);font-size:12px;margin-top:3px;">
+                                🏢 {{ r.floor.building.name }} • {{ r.floor.name }} • Type: {{ r.room_type }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if user.is_staff %}
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <a href="{% url 'room_update' r.pk %}" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">
+                            ✏️ Edit
+                        </a>
+                        <form method="POST" action="{% url 'room_deactivate' r.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;{% if r.is_active %}background:rgba(239,68,68,0.15);color:#fca5a5;{% else %}background:rgba(16,185,129,0.15);color:#6ee7b7;{% endif %}">
+                                {% if r.is_active %}Deactivate{% else %}Activate{% endif %}
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p style="color:var(--text-secondary);padding:20px 0;">No rooms registered in the system yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: LANDMARKS -->
+    <div id="tab-landmarks" class="tab-content">
+        <div class="contributors-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h2 style="color:white;margin:0;">Predefined Campus Landmarks</h2>
+                <span style="color:var(--text-secondary);font-size:13px;">Used for spatial landmark-based reports</span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                {% for lm in landmarks %}
+                <div class="contributor-row" style="display:flex;justify-content:space-between;align-items:center;">
+                    <div style="display:flex;align-items:center;gap:14px;flex:1;">
+                        <span style="font-size:22px;">📍</span>
+                        <div>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <strong style="color:white;font-size:15px;">{{ lm.name }}</strong>
+                                {% if lm.is_active %}
+                                <span class="badge-active">Active</span>
+                                {% else %}
+                                <span class="badge-inactive">Deactivated</span>
+                                {% endif %}
+                            </div>
+                            <div style="color:var(--text-secondary);font-size:12px;margin-top:3px;">
+                                🏢 {{ lm.building.name|default:"Campus Wide" }}{% if lm.floor %} • {{ lm.floor.name }}{% endif %}{% if lm.room %} • Linked to Room {{ lm.room.room_number }}{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if user.is_staff %}
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <a href="{% url 'landmark_update' lm.pk %}" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;text-decoration:none;">
+                            Edit
+                        </a>
+                        <a href="{% url 'landmark_delete' lm.pk %}" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;text-decoration:none;color:#f87171;">
+                            Delete
+                        </a>
+                        <form method="POST" action="{% url 'landmark_deactivate' lm.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;{% if lm.is_active %}background:rgba(239,68,68,0.15);color:#fca5a5;{% else %}background:rgba(16,185,129,0.15);color:#6ee7b7;{% endif %}">
+                                {% if lm.is_active %}Deactivate{% else %}Activate{% endif %}
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p style="color:var(--text-secondary);padding:20px 0;">No landmarks registered.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: BUILDINGS & FLOORS -->
+    <div id="tab-hierarchy" class="tab-content">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(400px, 1fr));gap:20px;">
+            {% for b in buildings %}
+            <div class="contributors-card">
+                <h3 style="color:white;display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                    🏢 {{ b.name }} ({{ b.code }})
+                </h3>
+                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:14px;">{{ b.description }}</p>
+
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    {% for f in b.floors.all %}
+                    <div style="background:rgba(255,255,255,0.03);padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;">
+                        <span style="color:white;font-weight:600;font-size:14px;">Level {{ f.floor_number }}: {{ f.name }}</span>
+                        <span style="color:var(--text-secondary);font-size:12px;">{{ f.rooms.count }} registered rooms</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- TAB 4: EQUIPMENT -->
+    <div id="tab-equipments" class="tab-content">
+        <div class="contributors-card">
+            <h2 style="color:white;margin-bottom:16px;">Tracked Equipment Identifiers</h2>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                {% for eq in equipments %}
+                <div class="contributor-row" style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <strong style="color:white;">{{ eq.name }} ({{ eq.code }})</strong>
+                        <div style="color:var(--text-secondary);font-size:12px;margin-top:2px;">
+                            📍 {{ eq.room.floor.building.name }} • Room {{ eq.room.room_number }}
+                        </div>
+                    </div>
+                    <span class="badge-active">Tracked Asset</span>
+                </div>
+                {% empty %}
+                <p style="color:var(--text-secondary);padding:20px 0;">No specific equipment registered.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function switchLocTab(tabName) {
+    document.querySelectorAll('.loc-tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+    event.currentTarget.classList.add('active');
+    document.getElementById('tab-' + tabName).classList.add('active');
+}
+</script>
+{% endblock %}
