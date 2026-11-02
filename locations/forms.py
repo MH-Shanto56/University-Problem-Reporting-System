@@ -75,4 +75,15 @@ class LandmarkForm(forms.ModelForm):
         }
 
 
+class EquipmentForm(forms.ModelForm):
+    class Meta:
+        model = Equipment
+        fields = ['room', 'name', 'code', 'is_active']
 
+
+class AreaForm(forms.ModelForm):
+    building = forms.CharField(max_length=50, required=False, initial='Campus Premises')
+
+    class Meta:
+        model = Area
+        fields = ['building', 'floor', 'name', 'latitude', 'longitude']
