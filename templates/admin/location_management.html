@@ -1,0 +1,539 @@
+{% extends 'admin/admin_base.html' %}
+
+{% block title %}Campus Locations - UPRS Admin Portal{% endblock %}
+{% block breadcrumb %}Campus Locations{% endblock %}
+
+{% block admin_content %}
+<!-- PAGE HEADER -->
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">Campus Locations & Facility Registry</h1>
+        <p class="admin-page-subtitle">
+            Configure buildings, define dynamic floor levels, and register classrooms, labs, land areas, and landmarks.
+        </p>
+    </div>
+    {% if user.is_staff or user.is_superuser %}
+    <div class="admin-header-actions" style="display:flex;flex-wrap:wrap;gap:8px;">
+        <a href="{% url 'room_create' %}" class="btn-admin btn-admin-primary">
+            <i class="fa-solid fa-plus"></i>
+            <span>Register New Room</span>
+        </a>
+        <button type="button" onclick="openAddBuildingModal()" class="btn-admin btn-admin-secondary">
+            <i class="fa-solid fa-building"></i>
+            <span>+ Add Building</span>
+        </button>
+        <button type="button" onclick="switchLocTab('hierarchy')" class="btn-admin btn-admin-secondary">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>Manage Floors</span>
+        </button>
+        <button type="button" onclick="openAddAreaModal()" class="btn-admin btn-admin-secondary">
+            <i class="fa-solid fa-tree"></i>
+            <span>+ Add Land Area</span>
+        </button>
+        <a href="{% url 'landmark_create' %}" class="btn-admin btn-admin-secondary">
+            <i class="fa-solid fa-location-pin"></i>
+            <span>+ Add Landmark</span>
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ====================================================================== -->
+<!-- LOCATION METRICS                                                       -->
+<!-- ====================================================================== -->
+<div class="admin-stats-grid">
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon navy">
+            <i class="fa-solid fa-building"></i>
+        </div>
+        <div>
+            <div class="admin-stat-val">{{ buildings.count }}</div>
+            <div class="admin-stat-label">Campus Buildings</div>
+        </div>
+    </div>
+
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon blue">
+            <i class="fa-solid fa-door-open"></i>
+        </div>
+        <div>
+            <div class="admin-stat-val">{{ total_rooms }}</div>
+            <div class="admin-stat-label">Registered Rooms</div>
+        </div>
+    </div>
+
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon green">
+            <i class="fa-solid fa-tree"></i>
+        </div>
+        <div>
+            <div class="admin-stat-val">{{ areas.count }}</div>
+            <div class="admin-stat-label">Land & Outdoor Areas</div>
+        </div>
+    </div>
+
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon amber">
+            <i class="fa-solid fa-location-dot"></i>
+        </div>
+        <div>
+            <div class="admin-stat-val">{{ landmarks.count }}</div>
+            <div class="admin-stat-label">Campus Landmarks</div>
+        </div>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- TABS: ROOMS, HIERARCHY, LAND AREAS, LANDMARKS                           -->
+<!-- ====================================================================== -->
+<div class="admin-card">
+    <div style="display:flex;border-bottom:1px solid var(--admin-border);background:rgba(255,255,255,0.03);padding:0 12px;overflow-x:auto;">
+        <button type="button" class="btn-admin" id="locTabRoomsBtn" onclick="switchLocTab('rooms')" style="border-radius:0;border-bottom:2px solid #3b82f6;color:#93c5fd;font-weight:600;padding:14px 18px;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer;">
+            <i class="fa-solid fa-door-closed"></i> Registered Rooms ({{ total_rooms }})
+        </button>
+        <button type="button" class="btn-admin" id="locTabHierarchyBtn" onclick="switchLocTab('hierarchy')" style="border-radius:0;border-bottom:2px solid transparent;color:#94a3b8;padding:14px 18px;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer;">
+            <i class="fa-solid fa-sitemap"></i> Buildings & Define Floors ({{ buildings.count }})
+        </button>
+        <button type="button" class="btn-admin" id="locTabAreasBtn" onclick="switchLocTab('areas')" style="border-radius:0;border-bottom:2px solid transparent;color:#94a3b8;padding:14px 18px;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer;">
+            <i class="fa-solid fa-tree"></i> Land & Outdoor Areas ({{ areas.count }})
+        </button>
+        <button type="button" class="btn-admin" id="locTabLandmarksBtn" onclick="switchLocTab('landmarks')" style="border-radius:0;border-bottom:2px solid transparent;color:#94a3b8;padding:14px 18px;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer;">
+            <i class="fa-solid fa-location-crosshairs"></i> Indoor Landmarks ({{ landmarks.count }})
+        </button>
+    </div>
+
+    <!-- TAB 1: REGISTERED ROOMS TABLE -->
+    <div id="locTabRooms" style="display:block;">
+        <div class="admin-table-container">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width:120px;">Room Number</th>
+                        <th>Descriptive Name</th>
+                        <th>Building</th>
+                        <th>Floor Level</th>
+                        <th>Room Type</th>
+                        <th>Status</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rooms %}
+                    <tr>
+                        <td>
+                            <span style="font-family:monospace;font-weight:700;color:#ffffff;font-size:13.5px;background:rgba(255,255,255,0.06);padding:3px 9px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);">
+                                {{ r.room_number }}
+                            </span>
+                        </td>
+                        <td style="font-weight:600;color:#ffffff;">
+                            {{ r.name }}
+                        </td>
+                        <td style="color:#cbd5e1;">
+                            {{ r.floor.building.name }}
+                        </td>
+                        <td style="color:#94a3b8;">
+                            {{ r.floor.name }}
+                        </td>
+                        <td>
+                            <span style="font-size:12px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.06);color:#e2e8f0;border:1px solid rgba(255,255,255,0.08);">
+                                {{ r.room_type|title }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if r.is_active %}
+                            <span class="badge-status badge-resolved">Active</span>
+                            {% else %}
+                            <span class="badge-status badge-closed">Deactivated</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:right;white-space:nowrap;">
+                            {% if user.is_staff or user.is_superuser %}
+                            <a href="{% url 'room_update' r.pk %}" class="btn-admin btn-admin-secondary btn-admin-sm" title="Edit Room Details">
+                                <i class="fa-solid fa-pen"></i> Edit
+                            </a>
+                            <form method="POST" action="{% url 'room_deactivate' r.pk %}" style="display:inline;" onsubmit="return confirm('Change active status for Room {{ r.room_number }}?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-admin btn-admin-secondary btn-admin-sm" style="{% if r.is_active %}color:#f87171;{% else %}color:#34d399;{% endif %}" title="Toggle active status">
+                                    {% if r.is_active %}<i class="fa-solid fa-ban"></i> Deactivate{% else %}<i class="fa-solid fa-check"></i> Activate{% endif %}
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align:center;padding:36px;color:#94a3b8;">
+                            No rooms registered yet. Click "Register New Room" to add campus facilities.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 2: HIERARCHY TREE & DYNAMIC FLOOR DEFINITION -->
+    <div id="locTabHierarchy" style="display:none;padding:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div>
+                <h3 style="font-size:16px;color:#ffffff;margin:0 0 6px;">Campus Buildings & Floor Configuration</h3>
+                <p style="color:#94a3b8;font-size:13.5px;margin:0;">
+                    Define new floor levels under any building. Floors defined here dynamically appear in student report dropdowns.
+                </p>
+            </div>
+            <button type="button" onclick="openAddBuildingModal()" class="btn-admin btn-admin-primary btn-admin-sm">
+                <i class="fa-solid fa-plus"></i> New Building
+            </button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:24px;">
+            {% for b in buildings %}
+            <div style="border:1px solid rgba(255,255,255,0.1);border-radius:12px;background:rgba(255,255,255,0.02);padding:22px;display:flex;flex-direction:column;justify-content:space-between;">
+                <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:12px;flex-wrap:wrap;gap:10px;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:28px;">🏢</span>
+                            <div>
+                                <h4 style="margin:0;font-size:16px;font-weight:700;color:#ffffff;">{{ b.name }}</h4>
+                                <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
+                                    <span style="font-size:11.5px;color:#94a3b8;font-family:monospace;background:rgba(255,255,255,0.06);padding:1px 6px;border-radius:4px;">Code: {{ b.code }}</span>
+                                    <span style="font-size:11.5px;background:rgba(59,130,246,0.15);color:#93c5fd;border:1px solid rgba(59,130,246,0.3);padding:1px 7px;border-radius:10px;font-weight:600;">
+                                        {{ b.floors.count }} Floor{{ b.floors.count|pluralize }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <a href="{% url 'building_update' b.pk %}" class="btn-admin btn-admin-secondary btn-admin-sm" title="Edit Building Name & Details">
+                                <i class="fa-solid fa-pen"></i> Edit
+                            </a>
+                            <a href="{% url 'building_delete' b.pk %}" class="btn-admin btn-admin-secondary btn-admin-sm" style="color:#f87171;" title="Delete Building">
+                                <i class="fa-solid fa-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- List of Floors under this Building -->
+                    <div style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;padding-right:4px;">
+                        {% for fl in b.floors.all %}
+                        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;">
+                            <span style="font-weight:600;font-size:13px;color:#ffffff;">
+                                ↳ {{ fl.name }}
+                            </span>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span style="font-size:11.5px;color:#94a3b8;background:rgba(255,255,255,0.05);padding:2px 7px;border-radius:5px;">
+                                    {{ fl.rooms.count }} room{{ fl.rooms.count|pluralize }}
+                                </span>
+                                <form method="POST" action="{% url 'floor_delete' fl.pk %}" style="display:inline;" onsubmit="return confirm('Delete floor \'{{ fl.name }}\'? Any rooms on this floor will also be removed.');">
+                                    {% csrf_token %}
+                                    <button type="submit" style="background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;padding:2px 4px;" title="Delete this floor" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='#64748b'">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div style="color:#94a3b8;font-size:12.5px;padding:12px;text-align:center;background:rgba(255,255,255,0.02);border-radius:6px;">
+                            No floors registered under {{ b.name }}. Use input below to define the first floor.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Inline Add Floor Form for this Building -->
+                <form method="POST" action="{% url 'floor_create' %}" style="display:flex;gap:8px;margin-top:18px;border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="building" value="{{ b.id }}">
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <input type="text" name="name" placeholder="+ New floor (e.g. 6th Floor - Civil Dept)" class="admin-input" style="flex:1;padding:8px 12px;font-size:13px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;" required>
+                    <button type="submit" class="btn-admin btn-admin-primary btn-admin-sm" style="white-space:nowrap;padding:8px 14px;">
+                        <i class="fa-solid fa-plus"></i> Add Floor
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- TAB 3: LAND & OUTDOOR AREAS TABLE -->
+    <div id="locTabAreas" style="display:none;">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--admin-border);display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <h3 style="font-size:15px;font-weight:700;color:#ffffff;margin:0 0 4px;">Campus Land Areas & Outdoor Zones</h3>
+                <p style="color:#94a3b8;font-size:13px;margin:0;">
+                    Manage outdoor grounds, sports complexes, parking areas, courtyards, and campus premises.
+                </p>
+            </div>
+            <button type="button" onclick="openAddAreaModal()" class="btn-admin btn-admin-primary btn-admin-sm">
+                <i class="fa-solid fa-plus"></i> Add Land Area
+            </button>
+        </div>
+        <div class="admin-table-container">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Land Area / Zone Name</th>
+                        <th>Building / Premises</th>
+                        <th>Floor / Level</th>
+                        <th>Linked Reports</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in areas %}
+                    <tr>
+                        <td style="font-weight:600;color:#ffffff;">
+                            🌳 {{ a.name }}
+                        </td>
+                        <td style="color:#cbd5e1;">
+                            {{ a.building }}
+                        </td>
+                        <td style="color:#94a3b8;">
+                            {{ a.floor|default:"Ground / Open Grounds" }}
+                        </td>
+                        <td>
+                            <span style="font-size:12px;background:rgba(59,130,246,0.12);color:#93c5fd;padding:2px 8px;border-radius:6px;border:1px solid rgba(59,130,246,0.25);">
+                                {{ a.issues.count }} issue{{ a.issues.count|pluralize }}
+                            </span>
+                        </td>
+                        <td style="text-align:right;white-space:nowrap;">
+                            {% if user.is_staff or user.is_superuser %}
+                            <a href="{% url 'location_update' a.pk %}" class="btn-admin btn-admin-secondary btn-admin-sm" title="Edit Land Area">
+                                <i class="fa-solid fa-pen"></i> Edit
+                            </a>
+                            <a href="{% url 'location_delete' a.pk %}" class="btn-admin btn-admin-secondary btn-admin-sm" style="color:#f87171;" title="Delete Land Area">
+                                <i class="fa-solid fa-trash"></i> Delete
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align:center;padding:36px;color:#94a3b8;">
+                            No campus land areas registered yet. Click "Add Land Area" to define outdoor areas, playgrounds, or open premises.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 4: LANDMARKS TABLE -->
+    <div id="locTabLandmarks" style="display:none;">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--admin-border);display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <h3 style="font-size:15px;font-weight:700;color:#ffffff;margin:0 0 4px;">Indoor & Campus Landmarks</h3>
+                <p style="color:#94a3b8;font-size:13px;margin:0;">
+                    Reference landmarks (e.g. Elevators, Main Gates, Stairs, Mosques) for spatial issue reporting.
+                </p>
+            </div>
+            <a href="{% url 'landmark_create' %}" class="btn-admin btn-admin-primary btn-admin-sm">
+                <i class="fa-solid fa-plus"></i> Add Landmark
+            </a>
+        </div>
+        <div class="admin-table-container">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Landmark Name</th>
+                        <th>Building</th>
+                        <th>Floor Level</th>
+                        <th>Associated Room</th>
+                        <th>Status</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lm in landmarks %}
+                    <tr>
+                        <td style="font-weight:600;color:#ffffff;">
+                            📍 {{ lm.name }}
+                        </td>
+                        <td style="color:#cbd5e1;">
+                            {{ lm.building.name|default:"Campus Premises" }}
+                        </td>
+                        <td style="color:#94a3b8;">
+                            {{ lm.floor.name|default:"General / Between Floors" }}
+                        </td>
+                        <td>
+                            {% if lm.room %}
+                            <span style="font-family:monospace;font-size:12px;background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:4px;color:#f1f5f9;">
+                                Room {{ lm.room.room_number }}
+                            </span>
+                            {% else %}
+                            <span style="color:#64748b;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if lm.is_active %}
+                            <span class="badge-status badge-resolved">Active</span>
+                            {% else %}
+                            <span class="badge-status badge-closed">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:right;white-space:nowrap;">
+                            {% if user.is_staff or user.is_superuser %}
+                            <a href="{% url 'landmark_update' lm.pk %}" class="btn-admin btn-admin-secondary btn-admin-sm" title="Edit Landmark">
+                                <i class="fa-solid fa-pen"></i> Edit
+                            </a>
+                            <a href="{% url 'landmark_delete' lm.pk %}" class="btn-admin btn-admin-secondary btn-admin-sm" style="color:#f87171;" title="Delete Landmark">
+                                <i class="fa-solid fa-trash"></i> Delete
+                            </a>
+                            <form method="POST" action="{% url 'landmark_deactivate' lm.pk %}" style="display:inline;" onsubmit="return confirm('Toggle landmark active state?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-admin btn-admin-secondary btn-admin-sm" style="{% if lm.is_active %}color:#f87171;{% else %}color:#34d399;{% endif %}">
+                                    {% if lm.is_active %}Deactivate{% else %}Activate{% endif %}
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" style="text-align:center;padding:36px;color:#94a3b8;">
+                            No landmarks registered yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- MODAL: ADD CAMPUS BUILDING                                             -->
+<!-- ====================================================================== -->
+<div id="addBuildingModal" onclick="if(event.target===this)closeAddBuildingModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 16px;backdrop-filter:blur(6px);box-sizing:border-box;">
+    <div style="background:#1c1917;border:1px solid rgba(255,255,255,0.15);border-radius:14px;width:100%;max-width:480px;padding:22px 24px;box-shadow:0 20px 40px rgba(0,0,0,0.7);margin:20px auto;box-sizing:border-box;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="margin:0;font-size:17px;font-weight:700;color:#ffffff;display:flex;align-items:center;gap:8px;">
+                🏢 Add Campus Building / Wing
+            </h3>
+            <button type="button" onclick="closeAddBuildingModal()" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;">&times;</button>
+        </div>
+        <form method="POST" action="{% url 'admin_locations' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_building">
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:6px;">Building Name <span style="color:#ef4444;">*</span></label>
+                <input type="text" name="name" placeholder="e.g. Civil Engineering Building, Annex Building" class="form-input" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13.5px;" required>
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:6px;">Building Code</label>
+                <input type="text" name="code" placeholder="e.g. CEB, AB" class="form-input" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13.5px;text-transform:uppercase;">
+            </div>
+            <div style="margin-bottom:20px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:6px;">Description (Optional)</label>
+                <textarea name="description" rows="2" placeholder="e.g. Houses Civil Engineering lecture rooms and specialized concrete labs" class="form-textarea" style="width:100%;box-sizing:border-box;padding:8px 12px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;"></textarea>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:10px;">
+                <button type="button" onclick="closeAddBuildingModal()" class="btn-admin btn-admin-secondary btn-admin-sm">Cancel</button>
+                <button type="submit" class="btn-admin btn-admin-primary btn-admin-sm"><i class="fa-solid fa-plus"></i> Create Building</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- MODAL: ADD LAND AREA / OUTDOOR AREA                                    -->
+<!-- ====================================================================== -->
+<div id="addAreaModal" onclick="if(event.target===this)closeAddAreaModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 16px;backdrop-filter:blur(6px);box-sizing:border-box;">
+    <div style="background:#1c1917;border:1px solid rgba(255,255,255,0.15);border-radius:14px;width:100%;max-width:480px;padding:22px 24px;box-shadow:0 20px 40px rgba(0,0,0,0.7);margin:20px auto;box-sizing:border-box;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="margin:0;font-size:17px;font-weight:700;color:#ffffff;display:flex;align-items:center;gap:8px;">
+                🌳 Define Campus Land Area / Outdoor Zone
+            </h3>
+            <button type="button" onclick="closeAddAreaModal()" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;">&times;</button>
+        </div>
+        <form method="POST" action="{% url 'admin_locations' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_area">
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:6px;">Land Area Name <span style="color:#ef4444;">*</span></label>
+                <input type="text" name="name" placeholder="e.g. Civil Survey Yard, Central Playground, Parking Lot" class="form-input" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13.5px;" required>
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:6px;">Campus Zone / Building</label>
+                <input type="text" name="building" value="Campus Premises / Outdoor" placeholder="e.g. Campus Premises / Outdoor or Main Building" class="form-input" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13.5px;">
+            </div>
+            <div style="margin-bottom:20px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:6px;">Floor / Level Label</label>
+                <input type="text" name="floor" value="Ground / Outdoor Space" placeholder="e.g. Ground / Outdoor Space" class="form-input" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13.5px;">
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:10px;">
+                <button type="button" onclick="closeAddAreaModal()" class="btn-admin btn-admin-secondary btn-admin-sm">Cancel</button>
+                <button type="submit" class="btn-admin btn-admin-primary btn-admin-sm"><i class="fa-solid fa-tree"></i> Create Land Area</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function switchLocTab(tab) {
+    document.getElementById('locTabRooms').style.display = tab === 'rooms' ? 'block' : 'none';
+    document.getElementById('locTabLandmarks').style.display = tab === 'landmarks' ? 'block' : 'none';
+    document.getElementById('locTabHierarchy').style.display = tab === 'hierarchy' ? 'block' : 'none';
+    document.getElementById('locTabAreas').style.display = tab === 'areas' ? 'block' : 'none';
+
+    var btnRooms = document.getElementById('locTabRoomsBtn');
+    var btnLandmarks = document.getElementById('locTabLandmarksBtn');
+    var btnHierarchy = document.getElementById('locTabHierarchyBtn');
+    var btnAreas = document.getElementById('locTabAreasBtn');
+
+    [btnRooms, btnLandmarks, btnHierarchy, btnAreas].forEach(function(b) {
+        if (!b) return;
+        b.style.borderBottomColor = 'transparent';
+        b.style.color = '#94a3b8';
+        b.style.fontWeight = 'normal';
+    });
+
+    if (tab === 'rooms' && btnRooms) {
+        btnRooms.style.borderBottomColor = '#3b82f6';
+        btnRooms.style.color = '#93c5fd';
+        btnRooms.style.fontWeight = '600';
+    } else if (tab === 'hierarchy' && btnHierarchy) {
+        btnHierarchy.style.borderBottomColor = '#3b82f6';
+        btnHierarchy.style.color = '#93c5fd';
+        btnHierarchy.style.fontWeight = '600';
+    } else if (tab === 'areas' && btnAreas) {
+        btnAreas.style.borderBottomColor = '#3b82f6';
+        btnAreas.style.color = '#93c5fd';
+        btnAreas.style.fontWeight = '600';
+    } else if (tab === 'landmarks' && btnLandmarks) {
+        btnLandmarks.style.borderBottomColor = '#3b82f6';
+        btnLandmarks.style.color = '#93c5fd';
+        btnLandmarks.style.fontWeight = '600';
+    }
+}
+
+function openAddBuildingModal() {
+    var modal = document.getElementById('addBuildingModal');
+    modal.style.display = 'flex';
+}
+
+function closeAddBuildingModal() {
+    var modal = document.getElementById('addBuildingModal');
+    modal.style.display = 'none';
+}
+
+function openAddAreaModal() {
+    var modal = document.getElementById('addAreaModal');
+    modal.style.display = 'flex';
+}
+
+function closeAddAreaModal() {
+    var modal = document.getElementById('addAreaModal');
+    modal.style.display = 'none';
+}
+
+// Close modals when clicking backdrop
+window.onclick = function(event) {
+    var bldgModal = document.getElementById('addBuildingModal');
+    var areaModal = document.getElementById('addAreaModal');
+    if (event.target === bldgModal) closeAddBuildingModal();
+    if (event.target === areaModal) closeAddAreaModal();
+};
+</script>
+{% endblock %}
