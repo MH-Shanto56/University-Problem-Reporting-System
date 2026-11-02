@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} - UPRS{% endblock %}
+
+{% block content %}
+<div style="max-width:640px;margin:40px auto;padding:0 20px;">
+    <!-- Form Header -->
+    <div style="margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <a href="{% url 'admin_locations' %}" style="color:#94a3b8;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:6px;">
+                <i class="fa-solid fa-arrow-left"></i> Back to Campus Locations
+            </a>
+        </div>
+        <h1 style="font-size:24px;font-weight:700;color:#ffffff;margin:0 0 6px;">{{ title }}</h1>
+        <p style="color:#94a3b8;font-size:14px;margin:0;">
+            Update building details, code identifier, and active status.
+        </p>
+    </div>
+
+    <div style="background:rgba(28,25,23,0.85);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;backdrop-filter:blur(20px);box-shadow:0 12px 36px rgba(0,0,0,0.5);">
+        <form method="POST">
+            {% csrf_token %}
+            <div style="margin-bottom:18px;">
+                <label style="display:block;font-size:13.5px;font-weight:600;color:#ffffff;margin-bottom:6px;">
+                    Building Name <span style="color:#ef4444;">*</span>
+                </label>
+                <input type="text" name="name" value="{{ building.name }}" required style="width:100%;box-sizing:border-box;padding:10px 14px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;font-size:14px;">
+            </div>
+
+            <div style="margin-bottom:18px;">
+                <label style="display:block;font-size:13.5px;font-weight:600;color:#ffffff;margin-bottom:6px;">
+                    Building Code Identifier <span style="color:#ef4444;">*</span>
+                </label>
+                <input type="text" name="code" value="{{ building.code }}" required style="width:100%;box-sizing:border-box;padding:10px 14px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;font-size:14px;font-family:monospace;text-transform:uppercase;">
+            </div>
+
+            <div style="margin-bottom:18px;">
+                <label style="display:block;font-size:13.5px;font-weight:600;color:#ffffff;margin-bottom:6px;">
+                    Description (Optional)
+                </label>
+                <textarea name="description" rows="3" style="width:100%;box-sizing:border-box;padding:10px 14px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;font-size:13.5px;">{{ building.description }}</textarea>
+            </div>
+
+            <div style="margin-bottom:24px;display:flex;align-items:center;gap:10px;">
+                <input type="checkbox" name="is_active" id="id_is_active" {% if building.is_active %}checked{% endif %} style="width:18px;height:18px;accent-color:#3b82f6;cursor:pointer;">
+                <label for="id_is_active" style="color:#cbd5e1;font-size:13.5px;cursor:pointer;margin:0;">
+                    Active for student problem reports
+                </label>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:20px;">
+                <button type="submit" class="btn-admin btn-admin-primary" style="padding:10px 24px;font-size:14px;">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Save Changes</span>
+                </button>
+                <a href="{% url 'admin_locations' %}" class="btn-admin btn-admin-secondary" style="padding:10px 20px;font-size:14px;text-decoration:none;">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
