@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - University Problem Reporting System (UPRS){% endblock %}
+
+{% block content %}
+<!-- ============ HERO SECTION ============ -->
+<section class="hero">
+    <div class="hero-content">
+        <h1>University Problem Reporting System</h1>
+        <p>Centralized platform for students, staff, and faculty to report campus facility issues, track repair progress in real-time, and ensure rapid resolution across university departments.</p>
+        <div class="hero-buttons">
+            <a href="{% url 'report' %}" class="btn btn-primary">Report a Problem</a>
+            <a href="{% url 'dashboard' %}" class="btn btn-secondary">View Dashboard</a>
+        </div>
+    </div>
+</section>
+
+<!-- ============ KEY FEATURES ============ -->
+<section class="section">
+    <h2 class="section-title">Key System Features</h2>
+    <div class="features-grid">
+        {% for f in features %}
+        <div class="feature-card bg-{{ f.color }}">
+            <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                {% if f.icon == 'location' %}
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                {% elif f.icon == 'camera' %}
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+                {% elif f.icon == 'trending' %}
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                {% elif f.icon == 'shield' %}
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                {% elif f.icon == 'users' or f.icon == 'community' %}
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                {% elif f.icon == 'chart' or f.icon == 'award' %}
+                    <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                {% endif %}
+            </svg>
+            <h3>{{ f.title }}</h3>
+            <p>{{ f.desc }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ============ PROBLEMS WE SOLVE ============ -->
+<section class="problems-section">
+    <h2 class="section-title">Campus Problems We Solve</h2>
+    <div class="pipeline-wrapper">
+        <div class="pipe-box">
+            🖥️ Broken projectors, HDMI cables, and lab computers disrupting academic classes
+        </div>
+        <div class="pipe-box">
+            ⚡ Unscheduled AC, lighting, and power socket failures in lecture halls
+        </div>
+        <div class="pipe-box">
+            📶 Unreliable Wi-Fi and network connectivity drops across campus departments
+        </div>
+        <div class="pipe-box">
+            🚰 Washroom sanitation, water supply, and hygiene maintenance delays
+        </div>
+        <div class="pipe-box">
+            🏢 No centralized tracking platform connecting students with responsible university offices
+        </div>
+        <div class="pipe-box">
+            🪑 Damaged classroom benches, chairs, and whiteboards hindering effective learning
+        </div>
+        <div class="pipe-box">
+            🔄 Duplicate complaint submissions causing delayed department response
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="footer-container">
+        <div class="footer-column">
+            <div class="footer-logo">
+                UPRS
+            </div>
+            <p class="footer-description">
+                University Problem Reporting System<br>
+                Empowering students and administration to report, monitor, and solve campus issues efficiently.
+            </p>
+        </div>
+
+        <div class="footer-column">
+            <h4>Quick Navigation</h4>
+            <div class="footer-links">
+                <a href="{% url 'dashboard' %}">Campus Dashboard</a>
+                <a href="{% url 'report' %}">Report Problem</a>
+                <a href="{% url 'location_list' %}">Campus Locations</a>
+            </div>
+        </div>
+
+        <div class="footer-column">
+            <h4>Academic Support</h4>
+            <div class="footer-links">
+                <a href="#">Department of CSE</a>
+                <a href="#">IT Support Helpdesk</a>
+                <a href="#">Campus Maintenance</a>
+                <a href="#">Privacy & Guidelines</a>
+            </div>
+        </div>
+
+        <div class="footer-column">
+            <h4>Campus Contact</h4>
+            <div class="footer-links">
+                <a href="#">uprs-support@uap-bd.edu</a>
+                <a href="#">University of Asia Pacific, Dhaka</a>
+                <a href="#">+880 2-58157091-4</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        © 2026 UPRS — University Problem Reporting System. All rights reserved.
+    </div>
+</footer>
+{% endblock %}
