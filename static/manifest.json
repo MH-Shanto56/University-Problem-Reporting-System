@@ -1,0 +1,9 @@
+{
+    "name": "University Problem Reporting System",
+    "short_name": "UPRS",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#070b14",
+    "theme_color": "#8b5cf6",
+    "icons": []
+}

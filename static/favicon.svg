@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="uprsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- Rounded Base Background -->
+  <rect width="100" height="100" rx="22" fill="url(#uprsGrad)"/>
+  <!-- University Building / Cap Emblem -->
+  <g fill="#ffffff" filter="url(#shadow)">
+    <!-- Graduation Cap / Roof -->
+    <path d="M50 20 L16 36 L50 52 L84 36 Z"/>
+    <!-- Tassel -->
+    <path d="M84 36 L84 56" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="84" cy="58" r="3.5" fill="#facc15"/>
+    <!-- Cap Base / Shield -->
+    <path d="M26 44 L26 62 C26 73 50 82 50 82 C50 82 74 73 74 62 L74 44 L50 55 Z"/>
+    <!-- Checkmark / Star in center -->
+    <path d="M43 62 L48 67 L58 56" stroke="#2563eb" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>
