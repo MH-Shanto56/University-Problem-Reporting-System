@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% block title %}My Profile - UPRS{% endblock %}
+{% block content %}
+<div class="section">
+    <div class="page-header">
+        <h1>My Campus Profile</h1>
+        <p>Manage your account, profile, and track your reported campus issues</p>
+    </div>
+    <div class="leaderboard-layout">
+        <!-- Left: Edit Profile -->
+        <div>
+            <div class="form-container" style="padding:30px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                    <h2 style="color:white;margin:0;font-size:20px;display:flex;align-items:center;gap:8px;">
+                        <i class="fa-solid fa-user-pen" style="color:#60a5fa;"></i> Edit Profile
+                    </h2>
+                    <span style="font-size:12px;padding:4px 10px;border-radius:20px;font-weight:600;{% if user.is_superuser %}background:rgba(59,130,246,0.18);color:#93c5fd;border:1px solid rgba(59,130,246,0.4);{% elif user.is_staff %}background:rgba(245,158,11,0.18);color:#fcd34d;border:1px solid rgba(245,158,11,0.4);{% else %}background:rgba(16,185,129,0.18);color:#6ee7b7;border:1px solid rgba(16,185,129,0.4);{% endif %}">
+                        {% if user.is_superuser %}🛡️ University Admin{% elif user.is_staff %}👷 Department Staff{% else %}🎓 Student{% endif %}
+                    </span>
+                </div>
+
+                <form method="POST" action="{% url 'profile' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label style="color:#e2e8f0;font-weight:600;font-size:13px;margin-bottom:6px;display:block;">First Name</label>
+                            <input type="text" name="first_name" value="{{ user.first_name }}" placeholder="e.g. Shanto" style="background:#090d16;border:1px solid rgba(255,255,255,0.12);color:#ffffff;border-radius:10px;padding:10px 14px;width:100%;">
+                        </div>
+                        <div class="form-group">
+                            <label style="color:#e2e8f0;font-weight:600;font-size:13px;margin-bottom:6px;display:block;">Last Name</label>
+                            <input type="text" name="last_name" value="{{ user.last_name }}" placeholder="e.g. Ahmed" style="background:#090d16;border:1px solid rgba(255,255,255,0.12);color:#ffffff;border-radius:10px;padding:10px 14px;width:100%;">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label style="color:#e2e8f0;font-weight:600;font-size:13px;margin-bottom:6px;display:block;">Email Address</label>
+                            <input type="email" name="email" value="{{ user.email }}" placeholder="e.g. student@university.edu" style="background:#090d16;border:1px solid rgba(255,255,255,0.12);color:#ffffff;border-radius:10px;padding:10px 14px;width:100%;">
+                        </div>
+                        {% if not user.is_staff and not user.is_superuser %}
+                        <div class="form-group">
+                            <label style="color:#e2e8f0;font-weight:600;font-size:13px;margin-bottom:6px;display:block;">Student ID</label>
+                            <input type="text" name="student_id" value="{{ profile.student_id }}" placeholder="e.g. 24101101" style="background:#090d16;border:1px solid rgba(255,255,255,0.12);color:#ffffff;border-radius:10px;padding:10px 14px;width:100%;">
+                        </div>
+                        {% else %}
+                        <div class="form-group">
+                            <label style="color:#e2e8f0;font-weight:600;font-size:13px;margin-bottom:6px;display:block;">Assigned Department</label>
+                            <input type="text" value="{{ profile.assigned_department.name|default:'Central Administration' }}" readonly style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#94a3b8;border-radius:10px;padding:10px 14px;width:100%;cursor:not-allowed;">
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if not user.is_staff and not user.is_superuser %}
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <label style="color:#e2e8f0;font-weight:600;font-size:13px;margin-bottom:6px;display:block;">Academic Department</label>
+                        <input type="text" name="department" value="{{ profile.department }}" placeholder="e.g. CSE, EEE, Pharmacy" style="background:#090d16;border:1px solid rgba(255,255,255,0.12);color:#ffffff;border-radius:10px;padding:10px 14px;width:100%;">
+                    </div>
+                    {% endif %}
+
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <label style="color:#e2e8f0;font-weight:600;font-size:13px;margin-bottom:6px;display:block;">Bio / Status</label>
+                        <textarea name="bio" rows="3" placeholder="Write a short bio or status about yourself..." style="background:#090d16;border:1px solid rgba(255,255,255,0.12);color:#ffffff;border-radius:10px;padding:10px 14px;width:100%;font-size:13.5px;">{{ profile.bio }}</textarea>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:20px;">
+                        <label style="color:#e2e8f0;font-weight:600;font-size:13px;margin-bottom:6px;display:block;">Avatar / Profile Photo</label>
+                        <div id="avatarPreviewContainer" style="margin-bottom:12px;display:flex;align-items:center;gap:14px;">
+                            {% if profile.avatar %}
+                            <img id="avatarPreviewImg" src="{{ profile.avatar.url }}" class="avatar-preview" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #3b82f6;box-shadow:0 0 10px rgba(59,130,246,0.35);">
+                            <span id="avatarPreviewLabel" style="font-size:12px;color:var(--text-secondary);">Current profile photo</span>
+                            {% else %}
+                            <div id="avatarPlaceholder" style="width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,0.05);border:2px dashed rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:22px;">
+                                <i class="fa-solid fa-user"></i>
+                            </div>
+                            <span id="avatarPreviewLabel" style="font-size:12px;color:var(--text-secondary);">No profile photo uploaded yet</span>
+                            {% endif %}
+                        </div>
+                        <input type="file" id="avatarFileInput" name="avatar" accept="image/*" onchange="handleAvatarSelect(this)" style="color:var(--text-secondary);font-size:12.5px;background:#090d16;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:8px 12px;width:100%;">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="padding:12px 28px;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:8px;border-radius:10px;box-shadow:0 0 16px rgba(59,130,246,0.35);cursor:pointer;">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Changes
+                    </button>
+                </form>
+            </div>
+
+            <!-- MY REPORTS & TRACKING -->
+            <div class="contributors-card" style="margin-top:24px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
+                    <h2 style="color:white;margin:0;font-size:20px;">📋 My Reports & Tracking</h2>
+                    <div style="display:flex;gap:8px;">
+                        <button type="button" class="btn btn-secondary tracking-tab-btn active" id="tabBtnReported" onclick="switchTrackTab('reported')" style="padding:6px 14px;font-size:12px;">
+                            My Reports ({{ my_issues.count }})
+                        </button>
+                        <button type="button" class="btn btn-secondary tracking-tab-btn" id="tabBtnSupported" onclick="switchTrackTab('supported')" style="padding:6px 14px;font-size:12px;">
+                            Supported ({{ supported_issues.count }})
+                        </button>
+                        <button type="button" class="btn btn-secondary tracking-tab-btn" id="tabBtnVerified" onclick="switchTrackTab('verified')" style="padding:6px 14px;font-size:12px;">
+                            Feedback ({{ my_verifications.count }})
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB A: MY REPORTED ISSUES -->
+                <div id="trackTabReported" class="track-tab-pane">
+                    {% for issue in my_issues %}
+                    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+                            <div>
+                                <span style="color:#60a5fa;font-weight:700;font-size:13px;margin-right:6px;">#{{ issue.id }}</span>
+                                <a href="{% url 'problem_detail' issue.pk %}" style="color:white;font-weight:600;text-decoration:none;font-size:16px;">
+                                    {{ issue.title }}
+                                </a>
+                            </div>
+                            <span class="status-badge status-{{ issue.status }}">{{ issue.get_status_display }}</span>
+                        </div>
+                        <div style="color:#93c5fd;font-size:12px;font-weight:600;margin-bottom:6px;">
+                            📍 {{ issue.get_location_display }}
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:12px;color:var(--text-secondary);font-size:12px;margin-bottom:8px;">
+                            <span>🏢 Dept: {{ issue.department.name|default:"Campus Maintenance" }}</span>
+                            <span>📅 Reported: {{ issue.created_at|date:"M d, Y" }}</span>
+                            <span>⏱️ Updated: {{ issue.updated_at|timesince }} ago</span>
+                            <span style="color:#60a5fa;font-weight:600;">👍 {{ issue.vote_count }} support(s)</span>
+                        </div>
+                        {% with summary=issue.get_community_verification_summary %}
+                        <div style="background:rgba(0,0,0,0.25);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text-secondary);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                            <span>{{ summary.summary_message }}</span>
+                            <span style="color:white;font-weight:600;">✓ {{ summary.resolved_count }} | ✕ {{ summary.exists_count }}</span>
+                        </div>
+                        {% endwith %}
+                    </div>
+                    {% empty %}
+                    <p style="color:var(--text-secondary);padding:14px 0;font-size:14px;">No issues reported yet. <a href="{% url 'report' %}" style="color:#60a5fa;">Report a campus problem</a></p>
+                    {% endfor %}
+                </div>
+
+                <!-- TAB B: ISSUES I SUPPORTED -->
+                <div id="trackTabSupported" class="track-tab-pane" style="display:none;">
+                    {% for issue in supported_issues %}
+                    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+                            <div>
+                                <span style="color:#60a5fa;font-weight:700;font-size:13px;margin-right:6px;">#{{ issue.id }}</span>
+                                <a href="{% url 'problem_detail' issue.pk %}" style="color:white;font-weight:600;text-decoration:none;font-size:16px;">
+                                    {{ issue.title }}
+                                </a>
+                            </div>
+                            <span class="status-badge status-{{ issue.status }}">{{ issue.get_status_display }}</span>
+                        </div>
+                        <div style="color:#93c5fd;font-size:12px;font-weight:600;margin-bottom:6px;">
+                            📍 {{ issue.get_location_display }}
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:12px;color:var(--text-secondary);font-size:12px;margin-bottom:8px;">
+                            <span>🏢 Dept: {{ issue.department.name|default:"Campus Maintenance" }}</span>
+                            <span>📅 Reported: {{ issue.created_at|date:"M d, Y" }}</span>
+                            <span>⏱️ Updated: {{ issue.updated_at|timesince }} ago</span>
+                            <span style="color:#60a5fa;font-weight:600;">👍 {{ issue.vote_count }} support(s)</span>
+                        </div>
+                        {% with summary=issue.get_community_verification_summary %}
+                        <div style="background:rgba(0,0,0,0.25);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text-secondary);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                            <span>{{ summary.summary_message }}</span>
+                            <span style="color:white;font-weight:600;">✓ {{ summary.resolved_count }} | ✕ {{ summary.exists_count }}</span>
+                        </div>
+                        {% endwith %}
+                    </div>
+                    {% empty %}
+                    <p style="color:var(--text-secondary);padding:14px 0;font-size:14px;">You haven't supported any issues yet.</p>
+                    {% endfor %}
+                </div>
+
+                <!-- TAB C: ISSUES I SUBMITTED RESOLUTION FEEDBACK FOR -->
+                <div id="trackTabVerified" class="track-tab-pane" style="display:none;">
+                    {% for v in my_verifications %}
+                    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+                            <div>
+                                <span style="color:#60a5fa;font-weight:700;font-size:13px;margin-right:6px;">#{{ v.issue.id }}</span>
+                                <a href="{% url 'problem_detail' v.issue.pk %}" style="color:white;font-weight:600;text-decoration:none;font-size:16px;">
+                                    {{ v.issue.title }}
+                                </a>
+                            </div>
+                            <span class="status-badge status-{{ v.issue.status }}">{{ v.issue.get_status_display }}</span>
+                        </div>
+                        <div style="margin-bottom:8px;">
+                            <span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:600;background:{% if v.verification_choice == 'appears_resolved' %}rgba(16,185,129,0.15);color:#34d399;{% else %}rgba(239,68,68,0.15);color:#f87171;{% endif %}">
+                                Your Observation: {{ v.get_verification_choice_display }}
+                            </span>
+                            {% if v.comment %}<span style="color:var(--text-secondary);font-size:13px;margin-left:8px;">"{{ v.comment }}"</span>{% endif %}
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:12px;color:var(--text-secondary);font-size:12px;">
+                            <span>📍 {{ v.issue.get_location_display }}</span>
+                            <span>⏱️ Submitted: {{ v.updated_at|timesince }} ago</span>
+                            <span style="color:#60a5fa;font-weight:600;">👍 {{ v.issue.vote_count }} support(s)</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p style="color:var(--text-secondary);padding:14px 0;font-size:14px;">You haven't submitted resolution observations on any campus problems yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <script>
+        function switchTrackTab(tab) {
+            document.getElementById('trackTabReported').style.display = tab === 'reported' ? 'block' : 'none';
+            document.getElementById('trackTabSupported').style.display = tab === 'supported' ? 'block' : 'none';
+            document.getElementById('trackTabVerified').style.display = tab === 'verified' ? 'block' : 'none';
+
+            document.getElementById('tabBtnReported').classList.toggle('active', tab === 'reported');
+            document.getElementById('tabBtnSupported').classList.toggle('active', tab === 'supported');
+            document.getElementById('tabBtnVerified').classList.toggle('active', tab === 'verified');
+        }
+        </script>
+
+        <!-- Right: Stats -->
+        <div>
+            <div class="progress-card">
+                <h3>Your Campus Stats</h3>
+                <div class="trophy-circle">🏆</div>
+                <div class="total-points">
+                    <div class="num">{{ profile.points }}</div>
+                    <div class="label">Total Points</div>
+                </div>
+                <div class="progress-stat"><span>Rank</span><span>#{{ profile.rank }}</span></div>
+                <div class="progress-stat"><span>Reports</span><span>{{ profile.reports_count }}</span></div>
+                <div class="progress-stat"><span>Supported</span><span>{{ profile.validated_count }}</span></div>
+                <div class="progress-stat"><span>Badges</span><span>{{ profile.badges_earned|length }}</span></div>
+            </div>
+            {% if profile.badges_earned %}
+            <div class="badges-card">
+                <h3>Your Badges</h3>
+                <div class="badges-grid">
+                    {% for b in profile.badges_earned %}
+                    <div class="badge {{ b.color }}">
+                        <div class="badge-icon">{{ b.icon }}</div>
+                        <div class="badge-name">{{ b.name }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function handleAvatarSelect(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var container = document.getElementById('avatarPreviewContainer');
+            container.innerHTML = '<img src="' + e.target.result + '" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #3b82f6;box-shadow:0 0 14px rgba(59,130,246,0.5);">' +
+                '<span style="font-size:12px;color:#6ee7b7;font-weight:600;"><i class="fa-solid fa-check"></i> New photo selected — Click "Save Changes" below to apply!</span>';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+{% endblock %}

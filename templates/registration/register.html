@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% block title %}Register - UPRS{% endblock %}
+
+{% block extra_head %}
+<style>
+.role-tabs {
+    display: flex;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 6px;
+    margin-bottom: 24px;
+}
+.role-tab-btn {
+    flex: 1;
+    padding: 10px 14px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 13px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.role-tab-btn.active.student {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    box-shadow: 0 2px 10px rgba(59, 130, 246, 0.2);
+}
+.role-tab-btn.active.staff {
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    box-shadow: 0 2px 10px rgba(168, 85, 247, 0.2);
+}
+.dept-select-box {
+    background: rgba(168, 85, 247, 0.08);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 18px;
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="section" style="max-width:540px;margin:40px auto;padding:0 20px;">
+    <div class="form-container" style="padding:36px 32px;background:rgba(20, 20, 24, 0.85);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08);border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+        
+        <!-- ROLE SELECTOR TABS -->
+        <div class="role-tabs">
+            <button type="button" class="role-tab-btn student active" id="tabStudentBtn" onclick="selectRegisterRole('student')">
+                <span>🎓</span> Student Account
+            </button>
+            <button type="button" class="role-tab-btn staff" id="tabStaffBtn" onclick="selectRegisterRole('staff')">
+                <span>🏢</span> Department Staff
+            </button>
+        </div>
+
+        <div style="text-align:center;margin-bottom:24px;">
+            <h1 id="regTitle" style="color:white;font-size:24px;font-weight:700;margin:0 0 6px;">Create Student Account</h1>
+            <p id="regSubtitle" style="color:var(--text-secondary);font-size:13px;margin:0;">Join the campus community to report and track issues</p>
+        </div>
+
+        <form method="POST" id="registerForm">
+            {% csrf_token %}
+            <!-- Hidden Account Type -->
+            <input type="hidden" name="account_type" id="accountTypeInput" value="student">
+
+            <!-- DEPARTMENT SELECTION (VISIBLE ONLY FOR STAFF) -->
+            <div id="deptSelectContainer" class="dept-select-box" style="display:none;">
+                <label style="display:block;font-size:13px;font-weight:700;color:#e9d5ff;margin-bottom:8px;">
+                    🏢 Select Your University Department <span style="color:#f87171;">*</span>
+                </label>
+                <select name="assigned_department" id="deptSelectInput" class="form-input" style="width:100%;font-size:14px;padding:12px 14px;background:#18181b;border:1px solid rgba(168,85,247,0.4);color:white;border-radius:8px;">
+                    {% for dept in departments %}
+                        <option value="{{ dept.id }}" {% if forloop.first %}selected{% endif %}>
+                            {{ dept.name }} ({{ dept.code }})
+                        </option>
+                    {% endfor %}
+                </select>
+                <p style="font-size:11px;color:#c084fc;margin:8px 0 0;line-height:1.4;">
+                    ℹ️ You will be granted staff privileges for this department and your dashboard will be dynamically configured for its issues.
+                </p>
+            </div>
+
+            <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:13px;font-weight:600;color:white;display:block;margin-bottom:6px;">First Name</label>
+                    <input type="text" name="first_name" value="{{ form.first_name.value|default:'' }}" required class="form-input" style="font-size:14px;padding:11px 13px;">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:13px;font-weight:600;color:white;display:block;margin-bottom:6px;">Last Name</label>
+                    <input type="text" name="last_name" value="{{ form.last_name.value|default:'' }}" required class="form-input" style="font-size:14px;padding:11px 13px;">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:14px;">
+                <label id="usernameLabel" style="font-size:13px;font-weight:600;color:white;display:block;margin-bottom:6px;">Username</label>
+                <input type="text" name="username" id="usernameInput" value="{{ form.username.value|default:'' }}" placeholder="e.g. staff_id or username" required class="form-input" style="font-size:14px;padding:11px 13px;">
+            </div>
+
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="font-size:13px;font-weight:600;color:white;display:block;margin-bottom:6px;">Email Address</label>
+                <input type="email" name="email" value="{{ form.email.value|default:'' }}" placeholder="e.g. user@uap-bd.edu" required class="form-input" style="font-size:14px;padding:11px 13px;">
+            </div>
+
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="font-size:13px;font-weight:600;color:white;display:block;margin-bottom:6px;">Password</label>
+                <div style="position:relative;display:flex;align-items:center;">
+                    <input type="password" name="password1" id="password1Input" placeholder="Enter secure password" required class="form-input" style="font-size:14px;padding:11px 44px 11px 13px;width:100%;">
+                    <button type="button" onclick="togglePasswordVisibility('password1Input', 'togglePassword1Icon')" style="position:absolute;right:8px;background:none;border:none;color:#94a3b8;cursor:pointer;padding:6px 8px;font-size:15px;display:flex;align-items:center;justify-content:center;transition:color 0.15s ease;" title="Show/Hide Password" aria-label="Toggle password visibility">
+                        <i class="fa-solid fa-eye" id="togglePassword1Icon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:20px;">
+                <label style="font-size:13px;font-weight:600;color:white;display:block;margin-bottom:6px;">Confirm Password</label>
+                <div style="position:relative;display:flex;align-items:center;">
+                    <input type="password" name="password2" id="password2Input" placeholder="Re-enter password" required class="form-input" style="font-size:14px;padding:11px 44px 11px 13px;width:100%;">
+                    <button type="button" onclick="togglePasswordVisibility('password2Input', 'togglePassword2Icon')" style="position:absolute;right:8px;background:none;border:none;color:#94a3b8;cursor:pointer;padding:6px 8px;font-size:15px;display:flex;align-items:center;justify-content:center;transition:color 0.15s ease;" title="Show/Hide Password" aria-label="Toggle password visibility">
+                        <i class="fa-solid fa-eye" id="togglePassword2Icon"></i>
+                    </button>
+                </div>
+            </div>
+
+            {% if form.errors %}
+            <div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);border-radius:10px;padding:12px 14px;margin-bottom:18px;">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                    <p style="color:#fca5a5;font-size:13px;margin:4px 0;line-height:1.4;">⚠️ {{ error }}</p>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <button type="submit" id="submitRegBtn" class="btn-submit" style="width:100%;padding:12px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;">
+                <span id="submitRegBtnText">Create Student Account →</span>
+            </button>
+        </form>
+
+        <p style="text-align:center;margin-top:22px;color:var(--text-secondary);font-size:13px;">
+            Already have an account? <a href="{% url 'login' %}" style="color:#60a5fa;font-weight:600;text-decoration:none;">Sign in</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function selectRegisterRole(role) {
+    var tabStudent = document.getElementById('tabStudentBtn');
+    var tabStaff = document.getElementById('tabStaffBtn');
+    var accountTypeInput = document.getElementById('accountTypeInput');
+    var deptContainer = document.getElementById('deptSelectContainer');
+    var regTitle = document.getElementById('regTitle');
+    var regSubtitle = document.getElementById('regSubtitle');
+    var submitBtn = document.getElementById('submitRegBtn');
+    var submitBtnText = document.getElementById('submitRegBtnText');
+    var usernameLabel = document.getElementById('usernameLabel');
+    var usernameInput = document.getElementById('usernameInput');
+
+    accountTypeInput.value = role;
+
+    if (role === 'staff') {
+        tabStaff.classList.add('active');
+        tabStudent.classList.remove('active');
+
+        deptContainer.style.display = 'block';
+
+        regTitle.textContent = 'Register Department Staff';
+        regSubtitle.textContent = 'Create an official account assigned to your operational department';
+
+        usernameLabel.textContent = 'Staff Username / Official ID';
+        usernameInput.placeholder = 'e.g. staff_it, staff_maint, or your name';
+
+        submitBtn.style.background = 'linear-gradient(135deg, #7c3aed, #2563eb)';
+        submitBtn.style.borderColor = '#7c3aed';
+        submitBtnText.textContent = 'Register as Department Staff 🏢';
+    } else {
+        tabStudent.classList.add('active');
+        tabStaff.classList.remove('active');
+
+        deptContainer.style.display = 'none';
+
+        regTitle.textContent = 'Create Student Account';
+        regSubtitle.textContent = 'Join the campus community to report and track issues';
+
+        usernameLabel.textContent = 'Username';
+        usernameInput.placeholder = 'e.g. student or your Student ID';
+
+        submitBtn.style.background = '';
+        submitBtn.style.borderColor = '';
+        submitBtnText.textContent = 'Create Student Account →';
+    }
+}
+
+function togglePasswordVisibility(inputId, iconId) {
+    var pwdInput = document.getElementById(inputId);
+    var icon = document.getElementById(iconId);
+    if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+        icon.style.color = '#60a5fa';
+    } else {
+        pwdInput.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+        icon.style.color = '#94a3b8';
+    }
+}
+</script>
+{% endblock %}
