@@ -1,0 +1,245 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}University Problem Reporting System (UPRS){% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
+    <link rel="shortcut icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
+    <link rel="apple-touch-icon" href="{% static 'favicon.svg' %}">
+    <meta name="theme-color" content="#09152e">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen w-full relative" style="background: linear-gradient(135deg, #09152e 0%, #102a5c 40%, #1e3a8a 70%, #0c1a3b 100%); background-attachment: fixed; min-height: 100vh; position: relative;">
+    <!-- Steel Blue Background -->
+    <div
+      class="absolute inset-0 z-0"
+      style="
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background-image: radial-gradient(circle at 50% 50%, 
+          rgba(59, 130, 246, 0.16) 0%, 
+          rgba(59, 130, 246, 0.09) 25%, 
+          rgba(59, 130, 246, 0.04) 35%, 
+          transparent 50% 
+
+        );
+        background-size: 100% 100%;
+      "
+      aria-hidden="true"
+    ></div>
+
+    <div style="position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column;">
+        <!-- NAVBAR -->
+    <nav class="navbar">
+        <a href="{% if user.is_authenticated %}{% if user.is_superuser %}{% url 'admin_dashboard' %}{% elif user.is_staff %}{% url 'department_dashboard' %}{% else %}{% url 'home' %}{% endif %}{% else %}{% url 'home' %}{% endif %}" class="nav-logo" title="UPRS - University Problem Reporting System">
+            <div class="logo-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+            <div class="logo-text">UPRS</div>
+        </a>
+
+        <ul class="nav-menu">
+            {% if user.is_authenticated and user.is_superuser %}
+                <!-- 1. UNIVERSITY ADMIN NAVIGATION -->
+                <li><a href="{% url 'admin_dashboard' %}" class="{% if active_page == 'admin_dashboard' or admin_active == 'overview' %}active{% endif %}">Dashboard Overview</a></li>
+                <li><a href="{% url 'admin_issues' %}" class="{% if active_page == 'admin_issues' or admin_active == 'issues' %}active{% endif %}">Issue Management</a></li>
+                <li><a href="{% url 'admin_resolutions' %}" class="{% if active_page == 'admin_resolutions' or admin_active == 'resolutions' %}active{% endif %}">Resolution & Reopens</a></li>
+                <li><a href="{% url 'admin_locations' %}" class="{% if active_page == 'admin_locations' or admin_active == 'locations' %}active{% endif %}">Campus Locations</a></li>
+                <li><a href="{% url 'admin_departments' %}" class="{% if active_page == 'admin_departments' or admin_active == 'departments' %}active{% endif %}">Departments & Staff</a></li>
+                <li><a href="{% url 'department_performance' %}" class="{% if active_page == 'department_performance' or admin_active == 'performance' %}active{% endif %}">Dept Performance</a></li>
+                <li><a href="{% url 'admin_audit_history' %}" class="{% if active_page == 'admin_audit_history' or admin_active == 'audit' %}active{% endif %}">Audit History</a></li>
+            {% elif user.is_authenticated and user.is_staff %}
+                <!-- 2. DEPARTMENT STAFF NAVIGATION -->
+                <li><a href="{% url 'department_dashboard' %}" class="{% if active_page == 'department_dashboard' %}active{% endif %}">Department Dashboard</a></li>
+            {% else %}
+                <!-- 3. STUDENT & PUBLIC NAVIGATION -->
+                <li><a href="{% url 'home' %}" class="{% if active_page == 'home' %}active{% endif %}">Home</a></li>
+                <li><a href="{% url 'dashboard' %}" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a></li>
+                {% if user.is_authenticated %}
+                <li><a href="{% url 'report' %}" class="{% if active_page == 'report' %}active{% endif %}">Report Problem</a></li>
+                {% endif %}
+                <li><a href="{% url 'location_list' %}" class="{% if active_page == 'locations' %}active{% endif %}">Locations</a></li>
+            {% endif %}
+        </ul>
+
+        <div class="nav-right">
+            {% if user.is_authenticated %}
+            <!-- Notifications Dropdown -->
+            <div class="nav-profile-dropdown" style="position:relative;">
+                <div class="nav-icon" title="Notifications" onclick="event.stopPropagation(); var d = document.getElementById('notificationDropdown'); var p = document.getElementById('profileDropdown'); if(p) p.classList.remove('show'); d.classList.toggle('show');">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                    </svg>
+                    {% if unread_notification_count > 0 %}
+                    <span class="notification-dot" id="headerNotifDot">{{ unread_notification_count }}</span>
+                    {% endif %}
+                </div>
+                <div id="notificationDropdown" class="dropdown-menu" style="min-width:320px;max-width:370px;right:0;padding:0;overflow:hidden;border:1px solid rgba(255,255,255,0.12);background:rgba(20,18,17,0.98);box-shadow:0 12px 36px rgba(0,0,0,0.6);">
+                    <div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.02);">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="font-weight:600;font-size:14px;color:#ffffff;">Notifications</span>
+                            {% if unread_notification_count > 0 %}
+                            <span id="headerNotifBadge" style="font-size:11px;background:rgba(59,130,246,0.25);color:#93c5fd;border:1px solid rgba(59,130,246,0.4);padding:2px 8px;border-radius:10px;font-weight:600;">
+                                {{ unread_notification_count }} new
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% if unread_notification_count > 0 %}
+                        <button type="button" id="headerMarkAllReadBtn" onclick="markAllNotificationsAsRead(event)" style="background:none;border:none;color:#60a5fa;font-size:11.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:4px;" title="Mark all as read">
+                            <i class="fa-solid fa-check-double"></i> Mark all read
+                        </button>
+                        {% endif %}
+                    </div>
+                    <div style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;">
+                        {% for n in header_notifications %}
+                        <a href="{% url 'mark_single_notification_read' n.pk %}" class="header-notif-item" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;gap:10px;align-items:flex-start;text-decoration:none;transition:background 0.15s ease;{% if not n.is_read %}background:rgba(59,130,246,0.08);{% endif %}">
+                            <span style="font-size:16px;flex-shrink:0;margin-top:2px;">
+                                {% if n.notification_type == 'vote' %}👍
+                                {% elif n.notification_type == 'status' %}🔄
+                                {% elif n.notification_type == 'duplicate' %}⚠️
+                                {% elif n.notification_type == 'resolved' %}✅
+                                {% else %}🔔{% endif %}
+                            </span>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:12.5px;font-weight:600;color:#ffffff;line-height:1.3;">{{ n.title }}</div>
+                                <div style="font-size:11.5px;color:#94a3b8;margin-top:2px;line-height:1.4;">{{ n.message|truncatechars:65 }}</div>
+                                <div style="font-size:10.5px;color:#64748b;margin-top:3px;">{{ n.created_at|timesince }} ago</div>
+                            </div>
+                        </a>
+                        {% empty %}
+                        <div style="padding:30px 16px;text-align:center;color:#94a3b8;font-size:13px;">
+                            No notifications yet
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <a href="{% url 'notifications' %}" style="display:block;padding:10px 16px;text-align:center;background:rgba(255,255,255,0.04);border-top:1px solid rgba(255,255,255,0.08);color:#93c5fd;text-decoration:none;font-size:12.5px;font-weight:600;">
+                        View All Notifications →
+                    </a>
+                </div>
+            </div>
+
+            <!-- Profile Dropdown -->
+            <div class="nav-profile-dropdown" style="position:relative;">
+                <div class="nav-icon" title="Profile" onclick="event.stopPropagation(); var d = document.getElementById('profileDropdown'); var n = document.getElementById('notificationDropdown'); if(n) n.classList.remove('show'); d.classList.toggle('show');" style="padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                    {% if user.profile.avatar %}
+                    <img src="{{ user.profile.avatar.url }}" alt="{{ user.get_full_name|default:user.username }}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid #3b82f6;box-shadow:0 0 10px rgba(59,130,246,0.45);display:block;">
+                    {% else %}
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    {% endif %}
+                </div>
+                <div id="profileDropdown" class="dropdown-menu">
+                    <div class="dropdown-header" style="display:flex;align-items:center;gap:12px;">
+                        {% if user.profile.avatar %}
+                        <img src="{{ user.profile.avatar.url }}" alt="{{ user.get_full_name|default:user.username }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #3b82f6;flex-shrink:0;">
+                        {% endif %}
+                        <div>
+                            <div style="font-weight:700;color:#ffffff;line-height:1.2;">{{ user.get_full_name|default:user.username }}</div>
+                            <div style="font-size:11px;font-weight:400;margin-top:3px;">
+                                {% if user.is_superuser %}
+                                <span style="color:#60a5fa;font-weight:600;">University Admin</span>
+                                {% elif user.is_staff %}
+                                <span style="color:#fbbf24;font-weight:600;">Department Staff</span>
+                                {% else %}
+                                <span style="color:#34d399;font-weight:600;">Student</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <a href="{% url 'profile' %}" class="dropdown-item">My Profile</a>
+                    {% if user.is_superuser %}
+                    <a href="{% url 'admin_dashboard' %}" class="dropdown-item" style="color:#60a5fa;">
+                        🛡️ Admin Dashboard
+                    </a>
+                    <a href="/admin/" class="dropdown-item" target="_blank" style="color:#c084fc;">
+                        ⚙️ Django Admin Panel
+                    </a>
+                    {% elif user.is_staff %}
+                    <a href="{% url 'department_dashboard' %}" class="dropdown-item" style="color:#60a5fa;">
+                        🏢 Department Dashboard
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'notifications' %}" class="dropdown-item">Notifications {% if unread_notification_count > 0 %}({{ unread_notification_count }}){% endif %}</a>
+                    <hr style="border-color:rgba(255,255,255,0.1);margin:4px 0;">
+                    <a href="{% url 'logout' %}" class="dropdown-item" style="color:var(--primary-red);">Logout</a>
+                </div>
+            </div>
+            {% else %}
+            <a href="{% url 'login' %}" class="btn btn-secondary" style="padding:8px 20px;font-size:14px;">Login</a>
+            <a href="{% url 'register' %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">Register</a>
+            {% endif %}
+        </div>
+    </nav>
+    {% if messages %}
+    <div style="max-width:1280px;margin:16px auto 0;padding:0 20px;">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}" style="padding:12px 18px;border-radius:10px;margin-bottom:12px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px;{% if message.tags == 'error' %}background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;{% elif message.tags == 'success' %}background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#6ee7b7;{% else %}background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;{% endif %}">
+            <span>{% if message.tags == 'error' %}⚠️{% elif message.tags == 'success' %}✅{% else %}ℹ️{% endif %}</span>
+            <span>{{ message }}</span>
+            <button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:currentColor;font-size:16px;cursor:pointer;opacity:0.75;padding:0 4px;margin-left:auto;" title="Dismiss">✕</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+    </div>
+
+    <script>
+    // Global dismiss for dropdowns
+    document.addEventListener('click', function(e) {
+        var notifDropdown = document.getElementById('notificationDropdown');
+        var profileDropdown = document.getElementById('profileDropdown');
+        if (notifDropdown && notifDropdown.classList.contains('show') && !notifDropdown.contains(e.target)) {
+            notifDropdown.classList.remove('show');
+        }
+        if (profileDropdown && profileDropdown.classList.contains('show')) {
+            profileDropdown.classList.remove('show');
+        }
+    });
+        function markAllNotificationsAsRead(event) {
+        if (event) event.stopPropagation();
+        fetch("{% url 'mark_all_notifications_read' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data && data.status === 'ok') {
+                var dot = document.getElementById('headerNotifDot');
+                if (dot) dot.style.display = 'none';
+                var badge = document.getElementById('headerNotifBadge');
+                if (badge) badge.style.display = 'none';
+                var btn = document.getElementById('headerMarkAllReadBtn');
+                if (btn) btn.style.display = 'none';
+                var pageBtn = document.getElementById('pageMarkAllReadBtn');
+                if (pageBtn) pageBtn.style.display = 'none';
+
+                var unreadItems = document.querySelectorAll('.header-notif-item');
+                unreadItems.forEach(function(el) {
+                    el.style.background = 'transparent';
+                });
+                var newBadges = document.querySelectorAll('.notif-new-badge');
+                newBadges.forEach(function(el) {
+                    el.style.display = 'none';
+                });
+            }
+        })
+        .catch(function(err) {
+            console.error(err);
+            window.location.href = "{% url 'notifications' %}";
+        });
+    }
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
