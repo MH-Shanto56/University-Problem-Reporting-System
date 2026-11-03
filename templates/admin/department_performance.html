@@ -1,0 +1,436 @@
+{% extends 'admin/admin_base.html' %}
+
+{% block title %}Department Performance Board - UPRS Admin Portal{% endblock %}
+{% block breadcrumb %}Department Performance{% endblock %}
+
+{% block admin_extra_head %}
+<!-- Chart.js for Department Efficiency Analytics -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block admin_content %}
+<!-- PAGE HEADER -->
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">University Department Performance Dashboard</h1>
+        <p class="admin-page-subtitle">
+            Individual operational dashboards for each university department, tracking resolution rate, active repair workload, and accountability.
+        </p>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- 1. CAMPUS-WIDE SUMMARY METRICS                                         -->
+<!-- ====================================================================== -->
+<div class="admin-stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));margin-bottom:28px;">
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon blue">
+            <i class="fa-solid fa-layer-group"></i>
+        </div>
+        <div>
+            <div class="admin-stat-val">{{ summary_stats.total_assigned }}</div>
+            <div class="admin-stat-label">Total Assigned Across Campus</div>
+        </div>
+    </div>
+
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon green">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div>
+            <div class="admin-stat-val">{{ summary_stats.overall_rate }}%</div>
+            <div class="admin-stat-label">Campus-Wide Resolution Rate</div>
+        </div>
+    </div>
+
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon amber">
+            <i class="fa-solid fa-wrench"></i>
+        </div>
+        <div>
+            <div class="admin-stat-val">{{ summary_stats.total_active }}</div>
+            <div class="admin-stat-label">Active / Pending Repairs</div>
+        </div>
+    </div>
+
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon cyan">
+            <i class="fa-solid fa-trophy"></i>
+        </div>
+        <div>
+            <div class="admin-stat-val" style="font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                {% if summary_stats.top_dept %}{{ summary_stats.top_dept.name|truncatechars:18 }}{% else %}N/A{% endif %}
+            </div>
+            <div class="admin-stat-label">Highest Efficiency Unit</div>
+        </div>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- 2. DEPARTMENT WORKLOAD & RESOLUTION COMPARISON                          -->
+<!-- ====================================================================== -->
+<div class="admin-card" style="margin-bottom:32px;">
+    <div class="admin-card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div>
+            <h3 class="admin-card-title">
+                <i class="fa-solid fa-chart-column" style="color:#3b82f6;"></i>
+                <span>Department Workload &amp; Resolution Comparison</span>
+            </h3>
+            <span style="font-size:12.5px;color:#94a3b8;">Real-time comparative analysis of reports assigned vs solved per operational unit</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;font-size:12px;color:#cbd5e1;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);padding:6px 12px;border-radius:6px;">
+            <span style="display:flex;align-items:center;gap:6px;">
+                <span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;"></span> Assigned (Workload)
+            </span>
+            <span style="display:flex;align-items:center;gap:6px;">
+                <span style="display:inline-block;width:10px;height:10px;background:#10b981;border-radius:2px;"></span> Resolved &amp; Closed
+            </span>
+            <span style="display:flex;align-items:center;gap:6px;">
+                <span style="display:inline-block;width:10px;height:10px;background:#f59e0b;border-radius:2px;"></span> In Progress
+            </span>
+        </div>
+    </div>
+    
+    <div style="padding:22px;">
+        <!-- Visual Interactive Bar Chart -->
+        <div style="position:relative;height:280px;width:100%;margin-bottom:28px;">
+            <canvas id="adminPerfComparisonChart"></canvas>
+        </div>
+
+        <!-- Comparative Progress Breakdown -->
+        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:20px;">
+            <div style="font-size:13px;font-weight:700;color:#ffffff;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                <i class="fa-solid fa-sliders" style="color:#60a5fa;"></i>
+                <span>Department-by-Department Resolution Progress Breakdown</span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:14px;">
+                {% for item in dept_stats %}
+                <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:12px 16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;font-family:monospace;">
+                                {{ item.code }}
+                            </span>
+                            <span style="font-weight:600;color:#ffffff;font-size:14px;">
+                                {{ item.name }}
+                            </span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:14px;font-size:12.5px;">
+                            <span style="color:#94a3b8;">
+                                Workload: <strong style="color:#ffffff;">{{ item.total_assigned }}</strong>
+                            </span>
+                            <span style="color:#34d399;">
+                                Solved: <strong>{{ item.resolved_closed }}</strong>
+                            </span>
+                            <span style="color:#fbbf24;">
+                                In Repairs: <strong>{{ item.in_progress_count }}</strong>
+                            </span>
+                            {% if item.resolution_rate_display == 'N/A' %}
+                            <span style="background:rgba(255,255,255,0.06);color:#94a3b8;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;">
+                                No Issues
+                            </span>
+                            {% else %}
+                            <span style="padding:2px 8px;border-radius:6px;font-weight:700;font-size:11.5px;{% if item.resolution_rate >= 80 %}background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);{% elif item.resolution_rate >= 50 %}background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);{% else %}background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);{% endif %}">
+                                {{ item.resolution_rate_display }} Resolved
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div style="height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;position:relative;">
+                        {% if item.total_assigned > 0 %}
+                        <div style="height:100%;background:linear-gradient(90deg, #10b981, #34d399);width:{{ item.resolution_rate }}%;border-radius:4px;transition:width 0.4s ease;"></div>
+                        {% else %}
+                        <div style="height:100%;background:rgba(255,255,255,0.04);width:100%;"></div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <p style="color:#94a3b8;font-size:13px;margin:0;">No operational departments registered.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- 3. INDIVIDUAL DEPARTMENT DASHBOARDS (Clean, Separate Cards)            -->
+<!-- ====================================================================== -->
+<div style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
+    <h3 style="font-size:18px;font-weight:700;color:#ffffff;margin:0;display:flex;align-items:center;gap:10px;">
+        <i class="fa-solid fa-building-circle-check" style="color:#60a5fa;"></i>
+        <span>Operational Department Dashboards ({{ dept_stats|length }})</span>
+    </h3>
+    <span style="font-size:12.5px;color:#94a3b8;">
+        Live real-time statistics from facility reports
+    </span>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(350px, 1fr));gap:20px;margin-bottom:32px;">
+    {% for item in dept_stats %}
+    <div style="background:rgba(28,25,23,0.85);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:22px;backdrop-filter:blur(16px);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 4px 16px rgba(0,0,0,0.3);transition:transform 0.2s ease, border-color 0.2s ease;">
+        <div>
+            <!-- Card Header -->
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:12px;">
+                <div>
+                    <h4 style="margin:0 0 4px;font-size:16px;font-weight:700;color:#ffffff;">
+                        {{ item.name }}
+                    </h4>
+                    <div style="font-size:12px;color:#94a3b8;">
+                        👤 Head: <span style="color:#f1f5f9;">{{ item.head_name }}</span>
+                    </div>
+                </div>
+                <span style="font-family:monospace;font-weight:700;font-size:12px;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#ffffff;">
+                    {{ item.code }}
+                </span>
+            </div>
+
+            <!-- 4 Key Stat Tiles -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+                <!-- Total Assigned -->
+                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;">
+                    <div style="font-size:11px;color:#94a3b8;font-weight:500;">Total Assigned</div>
+                    <div style="font-size:20px;font-weight:700;color:#ffffff;margin-top:2px;">{{ item.total_assigned }}</div>
+                </div>
+
+                <!-- Active / Pending -->
+                <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:10px 12px;">
+                    <div style="font-size:11px;color:#fbbf24;font-weight:500;">Active / In Repairs</div>
+                    <div style="font-size:20px;font-weight:700;color:#fbbf24;margin-top:2px;">{{ item.active_count }}</div>
+                </div>
+
+                <!-- Resolved & Closed -->
+                <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:10px 12px;">
+                    <div style="font-size:11px;color:#34d399;font-weight:500;">Resolved & Closed</div>
+                    <div style="font-size:20px;font-weight:700;color:#34d399;margin-top:2px;">{{ item.resolved_closed }}</div>
+                </div>
+
+                <!-- Resolution Rate -->
+                <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:8px;padding:10px 12px;">
+                    <div style="font-size:11px;color:#93c5fd;font-weight:500;">Resolution Rate</div>
+                    <div style="font-size:20px;font-weight:700;color:#93c5fd;margin-top:2px;">{{ item.resolution_rate_display }}</div>
+                </div>
+            </div>
+
+            <!-- Resolution Progress Bar -->
+            <div style="margin-bottom:14px;">
+                <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#94a3b8;margin-bottom:4px;">
+                    <span>Completion Progress</span>
+                    <span style="font-weight:600;color:#ffffff;">{{ item.resolution_rate_display }}</span>
+                </div>
+                <div style="width:100%;height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;">
+                    <div style="height:100%;width:{{ item.resolution_rate }}%;border-radius:4px;background:{% if item.resolution_rate >= 75 %}linear-gradient(90deg, #10b981, #34d399){% elif item.resolution_rate >= 40 %}linear-gradient(90deg, #f59e0b, #fbbf24){% else %}linear-gradient(90deg, #3b82f6, #60a5fa){% endif %};"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Footer -->
+        <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;margin-top:4px;display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-size:11.5px;color:#94a3b8;">
+                ⏱️ Avg Fix: <strong style="color:#ffffff;">{{ item.avg_resolution_time }}</strong>
+                <span style="margin-left:8px;">👥 Staff: <strong style="color:#ffffff;">{{ item.staff_count }}</strong></span>
+            </div>
+            <a href="{% url 'admin_issues' %}?department={{ item.department.id }}" style="font-size:12px;color:#93c5fd;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:4px;">
+                <span>View Issues</span>
+                <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i>
+            </a>
+        </div>
+    </div>
+    {% empty %}
+    <div style="grid-column:1/-1;text-align:center;padding:48px;background:rgba(28,25,23,0.75);border-radius:12px;border:1px solid rgba(255,255,255,0.08);color:#94a3b8;">
+        No operational departments registered in database.
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ====================================================================== -->
+<!-- 4. COMPREHENSIVE PERFORMANCE COMPARISON TABLE                          -->
+<!-- ====================================================================== -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h3 class="admin-card-title">
+            <i class="fa-solid fa-table" style="color:#60a5fa;"></i>
+            <span>Department Efficiency Summary Table</span>
+        </h3>
+    </div>
+    <div class="admin-table-container">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th style="text-align:center;">Assigned</th>
+                    <th style="text-align:center;">In Progress</th>
+                    <th style="text-align:center;">Resolved</th>
+                    <th style="text-align:center;">Closed</th>
+                    <th style="text-align:center;">Total Solved</th>
+                    <th style="text-align:center;">Resolution Rate</th>
+                    <th style="text-align:center;">Avg Fix Time</th>
+                    <th style="text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in dept_stats %}
+                <tr>
+                    <td style="font-weight:600;color:#ffffff;">
+                        {{ item.name }}
+                        <span style="background:rgba(255,255,255,0.06);color:#ffffff;font-size:11px;font-family:monospace;padding:2px 6px;border-radius:4px;margin-left:6px;border:1px solid rgba(255,255,255,0.1);">
+                            {{ item.code }}
+                        </span>
+                    </td>
+                    <td style="text-align:center;font-weight:700;color:#ffffff;">
+                        {{ item.total_assigned }}
+                    </td>
+                    <td style="text-align:center;color:#fbbf24;font-weight:600;">
+                        {{ item.in_progress_count }}
+                    </td>
+                    <td style="text-align:center;color:#60a5fa;font-weight:600;">
+                        {{ item.resolved_count }}
+                    </td>
+                    <td style="text-align:center;color:#94a3b8;">
+                        {{ item.closed_count }}
+                    </td>
+                    <td style="text-align:center;color:#34d399;font-weight:700;">
+                        {{ item.resolved_closed }}
+                    </td>
+                    <td style="text-align:center;">
+                        {% if item.resolution_rate_display == 'N/A' %}
+                        <span style="color:#64748b;font-size:12px;">N/A</span>
+                        {% else %}
+                        <span class="badge-priority" style="{% if item.resolution_rate >= 75 %}background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);{% elif item.resolution_rate >= 40 %}background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);{% else %}background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);{% endif %}">
+                            {{ item.resolution_rate_display }}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:center;color:#ffffff;font-size:12.5px;font-weight:600;">
+                        {{ item.avg_resolution_time }}
+                    </td>
+                    <td style="text-align:right;">
+                        <a href="{% url 'admin_issues' %}?department={{ item.department.id }}" class="btn-admin btn-admin-secondary btn-admin-sm">
+                            Issues →
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" style="text-align:center;padding:32px;color:#94a3b8;">
+                        No university departments registered in database.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var raw = {{ perf_chart_json|default:"{}"|safe }};
+    var canvas = document.getElementById('adminPerfComparisonChart');
+    if (!canvas || !raw || !raw.labels || raw.labels.length === 0) return;
+
+    function renderChart() {
+        if (typeof Chart === 'undefined') {
+            setTimeout(renderChart, 100);
+            return;
+        }
+
+        var ctx = canvas.getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: raw.labels,
+                datasets: [
+                    {
+                        label: 'Total Assigned (Workload)',
+                        data: raw.assigned,
+                        backgroundColor: 'rgba(59, 130, 246, 0.85)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 1.5,
+                        borderRadius: 6,
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.7,
+                    },
+                    {
+                        label: 'Resolved & Closed',
+                        data: raw.resolved,
+                        backgroundColor: 'rgba(16, 185, 129, 0.85)',
+                        borderColor: '#10b981',
+                        borderWidth: 1.5,
+                        borderRadius: 6,
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.7,
+                    },
+                    {
+                        label: 'In Progress / Active',
+                        data: raw.active,
+                        backgroundColor: 'rgba(245, 158, 11, 0.85)',
+                        borderColor: '#f59e0b',
+                        borderWidth: 1.5,
+                        borderRadius: 6,
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.7,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#cbd5e1',
+                            font: { size: 12, weight: '600' }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                        ticks: {
+                            color: '#94a3b8',
+                            stepSize: 1,
+                            precision: 0,
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            color: '#cbd5e1',
+                            boxWidth: 12,
+                            boxHeight: 12,
+                            padding: 12,
+                            font: { size: 12, weight: '600' }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1c1917',
+                        titleColor: '#ffffff',
+                        bodyColor: '#cbd5e1',
+                        borderColor: 'rgba(255, 255, 255, 0.15)',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            title: function(items) {
+                                var idx = items[0].dataIndex;
+                                return raw.names[idx] + ' (' + raw.labels[idx] + ')';
+                            },
+                            afterBody: function(items) {
+                                var idx = items[0].dataIndex;
+                                return 'Resolution Rate: ' + (raw.rates[idx] || 0) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    renderChart();
+});
+</script>
+{% endblock %}
