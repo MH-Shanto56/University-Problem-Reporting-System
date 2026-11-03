@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} - UPRS{% endblock %}
+
+{% block content %}
+<div style="max-width:740px;margin:40px auto;padding:0 20px;">
+    <!-- Form Header -->
+    <div style="margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <a href="{% if user.is_superuser %}{% url 'admin_locations' %}{% else %}{% url 'location_list' %}{% endif %}" style="color:#94a3b8;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:6px;">
+                <i class="fa-solid fa-arrow-left"></i> Back to Campus Locations
+            </a>
+        </div>
+        <h1 style="font-size:26px;font-weight:700;color:#ffffff;margin:0 0 6px;">{{ title }}</h1>
+        <p style="color:#94a3b8;font-size:14px;margin:0;line-height:1.5;">
+            Step-by-step facility registry: Select or define Building & Floor, then register classroom, lab, or department room.
+        </p>
+    </div>
+
+    <!-- Main Card Container -->
+    <div style="background:rgba(28,25,23,0.85);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;backdrop-filter:blur(20px);box-shadow:0 12px 36px rgba(0,0,0,0.5);">
+        {% if form.errors %}
+        <div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);border-radius:10px;padding:14px 18px;margin-bottom:20px;">
+            <div style="color:#f87171;font-weight:600;font-size:13.5px;margin-bottom:4px;">Please review the following errors:</div>
+            <ul style="color:#fca5a5;font-size:13px;margin:0;padding-left:18px;">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <li><strong>{{ field|title }}:</strong> {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <form method="POST" id="roomRegisterForm">
+            {% csrf_token %}
+
+            <!-- STEP 1: SELECT OR DEFINE CAMPUS BUILDING -->
+            <div style="margin-bottom:20px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <label style="font-size:13.5px;font-weight:600;color:#ffffff;margin:0;">
+                        1. Campus Building <span style="color:#ef4444;">*</span>
+                    </label>
+                    <button type="button" onclick="toggleNewBuildingField()" style="background:none;border:none;color:#93c5fd;font-size:12.5px;font-weight:600;cursor:pointer;padding:0;text-decoration:underline;">
+                        + Define New Building
+                    </button>
+                </div>
+
+                <div id="existingBuildingContainer">
+                    <select id="buildingSelector" name="building" class="form-select" style="width:100%;padding:10px 14px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;font-size:14px;" required onchange="onBuildingChange()">
+                        <option value="">-- Select University Building (e.g. Main Building, RH Building) --</option>
+                        {% for b in buildings %}
+                        <option value="{{ b.id }}" {% if current_building_id == b.id or room.floor.building.id == b.id %}selected{% endif %}>
+                            🏢 {{ b.name }} ({{ b.code }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Dynamic Inline New Building Definition -->
+                <div id="newBuildingContainer" style="display:none;margin-top:10px;background:rgba(255,255,255,0.03);border:1px dashed rgba(59,130,246,0.35);border-radius:8px;padding:14px 16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span style="font-size:13px;font-weight:600;color:#93c5fd;">
+                            🏢 Define New Campus Building / Wing:
+                        </span>
+                        <button type="button" onclick="cancelNewBuilding()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#94a3b8;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;">
+                            Use Existing
+                        </button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;">
+                        <div>
+                            <input type="text" name="new_building_name" id="new_building_name" placeholder="Building Name (e.g. Civil Engineering Building, Annex 1)" class="form-input" style="width:100%;box-sizing:border-box;padding:8px 12px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                        </div>
+                        <div>
+                            <input type="text" name="new_building_code" id="new_building_code" placeholder="Code (e.g. CEB)" class="form-input" style="width:100%;box-sizing:border-box;padding:8px 12px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;text-transform:uppercase;">
+                        </div>
+                    </div>
+                    <div style="font-size:11.5px;color:#94a3b8;margin-top:6px;">
+                        This building will be created automatically and will house your new floor and room.
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: SELECT OR DEFINE FLOOR -->
+            <div style="margin-bottom:20px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <label style="font-size:13.5px;font-weight:600;color:#ffffff;margin:0;">
+                        2. Floor Level <span style="color:#ef4444;">*</span>
+                    </label>
+                    <button type="button" onclick="toggleNewFloorField()" style="background:none;border:none;color:#93c5fd;font-size:12.5px;font-weight:600;cursor:pointer;padding:0;text-decoration:underline;">
+                        + Define New Floor
+                    </button>
+                </div>
+
+                <div id="existingFloorContainer">
+                    <select id="floorSelector" name="floor" class="form-select" style="width:100%;padding:10px 14px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;font-size:14px;" required>
+                        <option value="">-- Select Floor Level (e.g. 6th Floor - Civil Department) --</option>
+                        {% for b in buildings %}
+                            {% for fl in b.floors.all %}
+                            <option value="{{ fl.id }}" data-building="{{ b.id }}" {% if form.floor.value|stringformat:"s" == fl.id|stringformat:"s" or room.floor.id == fl.id %}selected{% endif %}>
+                                {{ b.name }} — {{ fl.name }}
+                            </option>
+                            {% endfor %}
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Dynamic Inline New Floor Definition -->
+                <div id="newFloorContainer" style="display:none;margin-top:10px;background:rgba(255,255,255,0.03);border:1px dashed rgba(59,130,246,0.35);border-radius:8px;padding:14px 16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span style="font-size:13px;font-weight:600;color:#93c5fd;">
+                            🏗️ Define New Floor Level:
+                        </span>
+                        <button type="button" onclick="cancelNewFloor()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#94a3b8;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;">
+                            Use Existing
+                        </button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:3fr 1fr;gap:10px;">
+                        <div>
+                            <input type="text" name="new_floor_name" id="new_floor_name" placeholder="e.g. 6th Floor (Department of Civil Engineering)" class="form-input" style="width:100%;box-sizing:border-box;padding:8px 12px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                        </div>
+                        <div>
+                            <input type="number" name="new_floor_number" id="new_floor_number" placeholder="Floor # (e.g. 6)" class="form-input" style="width:100%;box-sizing:border-box;padding:8px 12px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                        </div>
+                    </div>
+                    <div style="font-size:11.5px;color:#94a3b8;margin-top:6px;">
+                        This floor will be saved under the chosen building and immediately available for student problem reporting.
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 3 & 4: ROOM NUMBER & ROOM TYPE -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+                <div>
+                    <label style="display:block;font-size:13.5px;font-weight:600;color:#ffffff;margin-bottom:6px;">
+                        3. Room Number / Code <span style="color:#ef4444;">*</span>
+                    </label>
+                    <input type="text" name="room_number" id="id_room_number" value="{{ form.room_number.value|default:'' }}" placeholder="e.g. 602, 704, SL-2" style="width:100%;box-sizing:border-box;padding:10px 14px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;font-size:14px;font-family:monospace;font-weight:600;" required>
+                </div>
+                <div>
+                    <label style="display:block;font-size:13.5px;font-weight:600;color:#ffffff;margin-bottom:6px;">
+                        4. Room Type <span style="color:#ef4444;">*</span>
+                    </label>
+                    <select name="room_type" id="id_room_type" class="form-select" style="width:100%;padding:10px 14px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;font-size:14px;" required>
+                        <option value="Classroom" {% if form.room_type.value == 'Classroom' or form.room_type.value == 'classroom' or not form.room_type.value %}selected{% endif %}>🏫 Classroom / Lecture Room</option>
+                        <option value="Lab" {% if form.room_type.value == 'Lab' or form.room_type.value == 'lab' %}selected{% endif %}>🔬 Computer / Engineering Lab</option>
+                        <option value="Faculty" {% if form.room_type.value == 'Faculty' or form.room_type.value == 'faculty' or form.room_type.value == 'faculty_room' %}selected{% endif %}>💼 Faculty / Department Office</option>
+                        <option value="Auditorium" {% if form.room_type.value == 'Auditorium' or form.room_type.value == 'auditorium' or form.room_type.value == 'seminar_hall' %}selected{% endif %}>🎭 Auditorium / Seminar Hall</option>
+                        <option value="Washroom" {% if form.room_type.value == 'Washroom' or form.room_type.value == 'washroom' %}selected{% endif %}>🚻 Washroom / Restroom</option>
+                        <option value="Common" {% if form.room_type.value == 'Common' or form.room_type.value == 'common' or form.room_type.value == 'cafeteria' or form.room_type.value == 'library' %}selected{% endif %}>🛋️ Common Area / Lounge / Mosque</option>
+                        <option value="Other" {% if form.room_type.value == 'Other' or form.room_type.value == 'other' %}selected{% endif %}>📦 Other Academic Facility</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- STEP 5: DESCRIPTIVE DETAILS / NAME -->
+            <div style="margin-bottom:20px;">
+                <label style="display:block;font-size:13.5px;font-weight:600;color:#ffffff;margin-bottom:6px;">
+                    5. Room Name / Descriptive Details <span style="color:#ef4444;">*</span>
+                </label>
+                <input type="text" name="name" id="id_name" value="{{ form.name.value|default:'' }}" placeholder="e.g. Civil Department Theory Room 602, Software Lab 2" style="width:100%;box-sizing:border-box;padding:10px 14px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;font-size:14px;" required>
+                <div style="font-size:12px;color:#94a3b8;margin-top:4px;">
+                    Descriptive title shown to students and department staff when selecting or viewing this room.
+                </div>
+            </div>
+
+            <!-- STEP 6: ACTIVE STATUS -->
+            <div style="margin-bottom:28px;display:flex;align-items:center;gap:10px;">
+                <input type="checkbox" name="is_active" id="id_is_active" {% if form.is_active.value|default_if_none:True %}checked{% endif %} style="width:18px;height:18px;accent-color:#3b82f6;cursor:pointer;">
+                <label for="id_is_active" style="color:#cbd5e1;font-size:13.5px;cursor:pointer;margin:0;">
+                    Active for student problem reports (checked means visible in student reporting form)
+                </label>
+            </div>
+
+            <!-- FORM ACTIONS -->
+            <div style="display:flex;align-items:center;gap:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:20px;">
+                <button type="submit" class="btn-admin btn-admin-primary" style="padding:10px 24px;font-size:14px;">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Save Room</span>
+                </button>
+                <a href="{% if user.is_superuser %}{% url 'admin_locations' %}{% else %}{% url 'location_list' %}{% endif %}" class="btn-admin btn-admin-secondary" style="padding:10px 20px;font-size:14px;">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function onBuildingChange() {
+    var bldgId = document.getElementById('buildingSelector').value;
+    var floorSelect = document.getElementById('floorSelector');
+    var options = floorSelect.querySelectorAll('option');
+
+    var hasValidSelection = false;
+    options.forEach(function(opt) {
+        if (!opt.value) {
+            opt.style.display = 'block';
+            return;
+        }
+        var optBldg = opt.getAttribute('data-building');
+        if (!bldgId || optBldg === bldgId) {
+            opt.style.display = 'block';
+            if (opt.selected) hasValidSelection = true;
+        } else {
+            opt.style.display = 'none';
+            if (opt.selected) opt.selected = false;
+        }
+    });
+
+    if (!hasValidSelection && bldgId) {
+        for (var i = 0; i < options.length; i++) {
+            if (options[i].getAttribute('data-building') === bldgId) {
+                options[i].selected = true;
+                break;
+            }
+        }
+    }
+}
+
+function toggleNewBuildingField() {
+    var cont = document.getElementById('newBuildingContainer');
+    var existCont = document.getElementById('existingBuildingContainer');
+    var bldgSelect = document.getElementById('buildingSelector');
+    var inputName = document.getElementById('new_building_name');
+
+    if (cont.style.display === 'none') {
+        cont.style.display = 'block';
+        existCont.style.display = 'none';
+        bldgSelect.required = false;
+        inputName.required = true;
+        inputName.focus();
+        // Automatically open new floor container too if new building is defined
+        var floorCont = document.getElementById('newFloorContainer');
+        if (floorCont.style.display === 'none') {
+            toggleNewFloorField(true);
+        }
+    } else {
+        cancelNewBuilding();
+    }
+}
+
+function cancelNewBuilding() {
+    var cont = document.getElementById('newBuildingContainer');
+    var existCont = document.getElementById('existingBuildingContainer');
+    var bldgSelect = document.getElementById('buildingSelector');
+    var inputName = document.getElementById('new_building_name');
+    var inputCode = document.getElementById('new_building_code');
+    cont.style.display = 'none';
+    existCont.style.display = 'block';
+    inputName.value = '';
+    inputCode.value = '';
+    inputName.required = false;
+    bldgSelect.required = true;
+    onBuildingChange();
+}
+
+function toggleNewFloorField(skipAlert) {
+    var cont = document.getElementById('newFloorContainer');
+    var existCont = document.getElementById('existingFloorContainer');
+    var floorSelect = document.getElementById('floorSelector');
+    var input = document.getElementById('new_floor_name');
+    var bldg = document.getElementById('buildingSelector').value;
+    var newBldg = document.getElementById('new_building_name').value;
+
+    if (!skipAlert && !bldg && !newBldg && document.getElementById('newBuildingContainer').style.display === 'none') {
+        alert('Please select or define a Building first before defining a new floor.');
+        document.getElementById('buildingSelector').focus();
+        return;
+    }
+
+    if (cont.style.display === 'none') {
+        cont.style.display = 'block';
+        existCont.style.display = 'none';
+        floorSelect.required = false;
+        input.required = true;
+        input.focus();
+    } else {
+        cancelNewFloor();
+    }
+}
+
+function cancelNewFloor() {
+    var cont = document.getElementById('newFloorContainer');
+    var existCont = document.getElementById('existingFloorContainer');
+    var floorSelect = document.getElementById('floorSelector');
+    var input = document.getElementById('new_floor_name');
+    cont.style.display = 'none';
+    existCont.style.display = 'block';
+    input.value = '';
+    input.required = false;
+    floorSelect.required = true;
+}
+
+// Initial filter on load
+document.addEventListener('DOMContentLoaded', function() {
+    onBuildingChange();
+});
+</script>
+{% endblock %}

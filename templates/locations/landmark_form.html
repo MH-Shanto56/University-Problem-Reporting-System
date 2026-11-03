@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} - UPRS{% endblock %}
+
+{% block content %}
+<div style="max-width:680px;margin:40px auto;padding:0 20px;">
+    <!-- Form Header -->
+    <div style="margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <a href="{% if user.is_superuser %}{% url 'admin_locations' %}{% else %}{% url 'location_list' %}{% endif %}" style="color:#94a3b8;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:6px;">
+                <i class="fa-solid fa-arrow-left"></i> Back to Campus Locations
+            </a>
+        </div>
+        <h1 style="font-size:24px;font-weight:700;color:#ffffff;margin:0 0 6px;">{{ title }}</h1>
+        <p style="color:#94a3b8;font-size:14px;margin:0;">
+            Define or modify spatial campus landmarks (e.g. Elevators, Main Gates, Stairs, Mosques) for student problem reporting.
+        </p>
+    </div>
+
+    <!-- Main Card Container -->
+    <div style="background:rgba(28,25,23,0.85);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;backdrop-filter:blur(20px);box-shadow:0 12px 36px rgba(0,0,0,0.5);">
+        {% if form.errors %}
+        <div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);border-radius:10px;padding:14px 18px;margin-bottom:20px;">
+            <div style="color:#f87171;font-weight:600;font-size:13.5px;margin-bottom:4px;">Please review the following errors:</div>
+            <ul style="color:#fca5a5;font-size:13px;margin:0;padding-left:18px;">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <li><strong>{{ field|title }}:</strong> {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <div style="margin-bottom:18px;">
+                <label style="display:block;font-size:13.5px;font-weight:600;color:#ffffff;margin-bottom:6px;">
+                    Landmark Name <span style="color:#ef4444;">*</span>
+                </label>
+                {{ form.name }}
+                <div style="font-size:12px;color:#94a3b8;margin-top:4px;">
+                    Descriptive label (e.g. Main Auditorium, Passenger Elevator, North Staircase, Central Mosque)
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
+                <div>
+                    <label style="display:block;font-size:13.5px;font-weight:600;color:#ffffff;margin-bottom:6px;">
+                        Campus Building
+                    </label>
+                    {{ form.building }}
+                </div>
+                <div>
+                    <label style="display:block;font-size:13.5px;font-weight:600;color:#ffffff;margin-bottom:6px;">
+                        Floor Level (Optional)
+                    </label>
+                    {{ form.floor }}
+                </div>
+            </div>
+
+            <div style="margin-bottom:18px;">
+                <label style="display:block;font-size:13.5px;font-weight:600;color:#ffffff;margin-bottom:6px;">
+                    Optional Room Reference
+                </label>
+                {{ form.room }}
+                <div style="font-size:12px;color:#94a3b8;margin-top:4px;">
+                    Allows a registered room to serve as a spatial landmark without treating reported issues as inside the room.
+                </div>
+            </div>
+
+            <div style="margin-bottom:24px;display:flex;align-items:center;gap:10px;">
+                {{ form.is_active }}
+                <label for="{{ form.is_active.id_for_label }}" style="color:#cbd5e1;font-size:13.5px;cursor:pointer;margin:0;">
+                    Active for student problem reporting
+                </label>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:20px;">
+                <button type="submit" class="btn-admin btn-admin-primary" style="padding:10px 24px;font-size:14px;">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Save Landmark</span>
+                </button>
+                <a href="{% if user.is_superuser %}{% url 'admin_locations' %}{% else %}{% url 'location_list' %}{% endif %}" class="btn-admin btn-admin-secondary" style="padding:10px 20px;font-size:14px;text-decoration:none;">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

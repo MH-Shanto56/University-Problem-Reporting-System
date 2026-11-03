@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} - UPRS{% endblock %}
+{% block content %}
+<div class="section" style="max-width:700px;margin:40px auto;">
+    <div class="form-container" style="padding:36px;">
+        <h1 style="color:white;margin-bottom:8px;">{{ title }}</h1>
+        <p style="color:var(--text-secondary);margin-bottom:24px;">
+            Configure building, floor, and department zone details for the campus
+        </p>
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label>Campus Building <span class="required">*</span></label>
+                {{ form.building }}
+            </div>
+
+            <div class="form-group">
+                <label>Floor / Level <span class="required">*</span></label>
+                {{ form.floor }}
+                <small style="color:var(--text-secondary);font-size:12px;margin-top:4px;display:block;">
+                    e.g. Ground Floor, 3rd Floor (Pharmacy), 7th Floor (CSE), 9th Floor (Library & Law)
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label>Full Display Name <span class="required">*</span></label>
+                {{ form.name }}
+                <small style="color:var(--text-secondary);font-size:12px;margin-top:4px;display:block;">
+                    This name appears in the student problem reporting dropdown (e.g. Main Building - 7th Floor (CSE))
+                </small>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Latitude (Optional)</label>
+                    {{ form.latitude }}
+                </div>
+                <div class="form-group">
+                    <label>Longitude (Optional)</label>
+                    {{ form.longitude }}
+                </div>
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:24px;">
+                <button type="submit" class="btn btn-primary" style="padding:12px 24px;">
+                    💾 Save Location
+                </button>
+                <a href="{% url 'location_list' %}" class="btn btn-secondary" style="padding:12px 24px;text-decoration:none;">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

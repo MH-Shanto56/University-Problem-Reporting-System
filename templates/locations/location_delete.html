@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Delete Location - UPRS{% endblock %}
+{% block content %}
+<div class="section" style="max-width:600px;margin:60px auto;">
+    <div class="form-container" style="padding:40px;text-align:center;">
+        <div style="font-size:54px;margin-bottom:16px;">🏢</div>
+        <h2 style="color:white;margin-bottom:12px;">Delete Campus Location</h2>
+        <p style="color:var(--text-secondary);font-size:16px;margin-bottom:24px;">
+            Are you sure you want to remove this location from the university reporting registry?<br>
+            <strong style="color:white;display:block;margin-top:8px;">"{{ area.name }}"</strong>
+        </p>
+
+        <form method="POST" style="display:flex;gap:16px;justify-content:center;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary" style="background:#ef4444;color:white;border:none;padding:12px 28px;">
+                Yes, Delete
+            </button>
+            <a href="{% url 'location_list' %}" class="btn btn-secondary" style="padding:12px 28px;text-decoration:none;">
+                Cancel
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}
