@@ -104,13 +104,7 @@ py -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-### 4. Create an administrator account
-
-```powershell
-python manage.py createsuperuser
-```
-
-### 5. Start the development server
+### 4. Start the development server
 
 ```powershell
 python manage.py runserver
