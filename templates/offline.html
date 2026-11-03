@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Offline - UPRS{% endblock %}
+{% block content %}
+<div class="section" style="text-align:center;padding:80px 20px;">
+    <div style="font-size:64px;margin-bottom:20px;">📡</div>
+    <h1 style="color:white;margin-bottom:12px;">You're Offline</h1>
+    <p style="color:var(--text-gray);max-width:500px;margin:0 auto 30px;">
+        It looks like you've lost your internet connection. Don't worry — any reports you submit will be saved and automatically sent when you're back online.
+    </p>
+    <a href="{% url 'report' %}" class="btn btn-primary">Report Issue (Offline)</a>
+</div>
+{% endblock %}
