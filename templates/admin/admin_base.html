@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% block admin_title %}University Admin Portal - UPRS{% endblock %}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'admin.css' %}">
+{% block admin_extra_head %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+<div class="section admin-container" style="max-width: 1400px; margin: 24px auto 60px; padding: 0 20px;">
+    {% block admin_content %}{% endblock %}
+</div>
+{% endblock %}
