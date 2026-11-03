@@ -1,0 +1,353 @@
+{% extends 'admin/admin_base.html' %}
+
+{% block title %}Dashboard Overview - UPRS Admin Portal{% endblock %}
+{% block breadcrumb %}Overview{% endblock %}
+
+{% block admin_content %}
+<!-- PAGE HEADER -->
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">
+            {% if user.is_superuser %}
+            University Operations Dashboard
+            {% elif department %}
+            {{ department.name }} Operations Dashboard
+            {% else %}
+            Department Staff Dashboard
+            {% endif %}
+        </h1>
+        <p class="admin-page-subtitle">
+            Real-time status overview, actionable administrative queues, and recent campus facility events.
+        </p>
+    </div>
+    <div class="admin-header-actions">
+        <a href="{% url 'admin_issues' %}" class="btn-admin btn-admin-primary">
+            <i class="fa-solid fa-list-check"></i>
+            <span>Manage All Issues</span>
+        </a>
+        <a href="{% url 'admin_resolutions' %}" class="btn-admin btn-admin-secondary">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>Review Resolutions</span>
+        </a>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- 1. WORKING CORE SUMMARY CARDS (Total, In Progress, Resolved, Closed, High Priority) -->
+<!-- ====================================================================== -->
+<div class="admin-stats-grid">
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon blue">
+            <i class="fa-solid fa-folder-open"></i>
+        </div>
+        <div>
+            <div class="admin-stat-val">{{ stats.total }}</div>
+            <div class="admin-stat-label">Total Reports</div>
+        </div>
+    </div>
+
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon amber">
+            <i class="fa-solid fa-wrench"></i>
+        </div>
+        <div>
+            <div class="admin-stat-val">{{ stats.in_progress }}</div>
+            <div class="admin-stat-label">In Progress (Repairs)</div>
+        </div>
+    </div>
+
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon green">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div>
+            <div class="admin-stat-val">{{ stats.resolved }}</div>
+            <div class="admin-stat-label">Resolved Issues</div>
+        </div>
+    </div>
+
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon cyan">
+            <i class="fa-solid fa-lock"></i>
+        </div>
+        <div>
+            <div class="admin-stat-val">{{ stats.closed }}</div>
+            <div class="admin-stat-label">Closed Issues</div>
+        </div>
+    </div>
+
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon red">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div>
+            <div class="admin-stat-val">{{ stats.high_priority }}</div>
+            <div class="admin-stat-label">High &amp; Community Priority</div>
+        </div>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- 2. ACTIONABLE PENDING ADMINISTRATIVE QUEUES                            -->
+<!-- ====================================================================== -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h3 class="admin-card-title">
+            <i class="fa-solid fa-bell-concierge" style="color:var(--admin-blue-600);"></i>
+            <span>Pending Administrative Actions</span>
+        </h3>
+        <span style="font-size:12px;color:var(--admin-text-muted);">
+            Direct queue access — click any card to open filtered view
+        </span>
+    </div>
+    <div class="admin-card-body" style="padding-bottom:10px;">
+        <div class="admin-pending-grid">
+            {% if urgent_active_count > 0 %}
+            <!-- 0. Urgent Directive Escalations -->
+            <a href="{% url 'admin_issues' %}?priority=urgent&active=1" class="admin-pending-item urgent" style="border-left-color:#dc2626;background:rgba(220,38,38,0.08);">
+                <div>
+                    <div class="admin-pending-title" style="color:#ef4444;font-weight:800;">🚨 Urgent Directives Active</div>
+                    <div class="admin-pending-desc">Escalated campus emergencies requiring instant resolution</div>
+                </div>
+                <div class="admin-pending-count" style="color:#ef4444;">
+                    {{ urgent_active_count }}
+                </div>
+            </a>
+            {% endif %}
+
+            <!-- 1. Newly Submitted Awaiting Review -->
+            <a href="{% url 'admin_issues' %}?status=submitted" class="admin-pending-item">
+                <div>
+                    <div class="admin-pending-title">Newly Submitted Reports</div>
+                    <div class="admin-pending-desc">Awaiting staff review and acceptance</div>
+                </div>
+                <div class="admin-pending-count" style="color:var(--admin-blue-600);">
+                    {{ pending_submitted_count }}
+                </div>
+            </a>
+
+            <!-- 2. Unassigned Department -->
+            {% if user.is_superuser %}
+            <a href="{% url 'admin_issues' %}?unassigned=1" class="admin-pending-item warning">
+                <div>
+                    <div class="admin-pending-title">Unassigned to Department</div>
+                    <div class="admin-pending-desc">Requires routing to responsible unit</div>
+                </div>
+                <div class="admin-pending-count" style="color:var(--admin-amber-600);">
+                    {{ unassigned_dept_count }}
+                </div>
+            </a>
+            {% endif %}
+
+            <!-- 3. High-Priority & Community Supported Active -->
+            <a href="{% url 'admin_issues' %}?priority=high_supported&active=1" class="admin-pending-item urgent">
+                <div>
+                    <div class="admin-pending-title">High &amp; Community Priority Issues</div>
+                    <div class="admin-pending-desc">High severity or student-supported critical concerns</div>
+                </div>
+                <div class="admin-pending-count" style="color:var(--admin-red-600);">
+                    {{ high_priority_active_count }}
+                </div>
+            </a>
+
+            <!-- 4. Resolved Awaiting Closure -->
+            <a href="{% url 'admin_resolutions' %}?tab=closure" class="admin-pending-item success">
+                <div>
+                    <div class="admin-pending-title">Resolved Awaiting Closure</div>
+                    <div class="admin-pending-desc">Repairs done, community feedback ready</div>
+                </div>
+                <div class="admin-pending-count" style="color:var(--admin-green-600);">
+                    {{ awaiting_closure_count }}
+                </div>
+            </a>
+
+            <!-- 5. Pending Reopen Requests -->
+            <a href="{% url 'admin_resolutions' %}?tab=reopens" class="admin-pending-item warning">
+                <div>
+                    <div class="admin-pending-title">Student Reopen Requests</div>
+                    <div class="admin-pending-desc">Students report problem unresolved</div>
+                </div>
+                <div class="admin-pending-count" style="color:var(--admin-amber-600);">
+                    {{ pending_reopens_count }}
+                </div>
+            </a>
+
+            <!-- 6. Overdue Issues -->
+            <a href="{% url 'admin_issues' %}?overdue=1" class="admin-pending-item">
+                <div>
+                    <div class="admin-pending-title">Overdue / Delayed In-Progress</div>
+                    <div class="admin-pending-desc">In repairs &gt; 3 days without update</div>
+                </div>
+                <div class="admin-pending-count" style="color:var(--admin-text-main);">
+                    {{ overdue_count }}
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- 3. RECENT ACTIVITY (Real Facility Events from Database)                -->
+<!-- ====================================================================== -->
+<div class="admin-card">
+    <div class="admin-card-header" style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:14px 20px;">
+        <h3 class="admin-card-title" style="margin:0;display:flex;align-items:center;gap:8px;white-space:nowrap;">
+            <i class="fa-solid fa-clock-rotate-left" style="color:#60a5fa;"></i>
+            <span>Recent Campus Facility Events</span>
+        </h3>
+
+        <!-- Search Bar & Status Filter (Centered between title and Full Audit History link) -->
+        <div style="display:flex;align-items:center;gap:8px;flex:1;max-width:560px;margin:0 12px;min-width:280px;">
+            <div style="position:relative;flex:1;">
+                <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:12.5px;pointer-events:none;"></i>
+                <input type="text" id="facilityEventSearch" placeholder="Search problem (WiFi, AC, Central), status, or actor..." style="width:100%;background:rgba(9,13,22,0.85);border:1px solid rgba(255,255,255,0.14);border-radius:10px;padding:7px 30px 7px 32px;color:#ffffff;font-size:12.5px;outline:none;transition:all 0.2s ease;" oninput="filterFacilityEvents()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 10px rgba(59,130,246,0.25)';" onblur="this.style.borderColor='rgba(255,255,255,0.14)';this.style.boxShadow='none';">
+                <button type="button" id="clearEventSearchBtn" onclick="clearEventSearch()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;padding:2px 4px;" title="Clear search">✕</button>
+            </div>
+            <select id="facilityEventStatusFilter" onchange="filterFacilityEvents()" style="background:rgba(9,13,22,0.85);border:1px solid rgba(255,255,255,0.14);border-radius:10px;padding:7px 10px;color:#cbd5e1;font-size:12px;font-weight:600;outline:none;cursor:pointer;white-space:nowrap;">
+                <option value="all">All Statuses</option>
+                <option value="in_progress">🟡 In Progress</option>
+                <option value="resolved">🟢 Resolved</option>
+                <option value="closed">⚪ Closed</option>
+                <option value="submitted">🔵 Report Submitted</option>
+            </select>
+        </div>
+
+        <a href="{% url 'admin_audit_history' %}" style="font-size:12.5px;color:#93c5fd;text-decoration:none;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;">
+            Full Audit History →
+        </a>
+    </div>
+    <div style="padding:0;">
+        <div class="admin-table-container">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width:140px;">Time</th>
+                        <th>Problem / Issue</th>
+                        <th>Actor</th>
+                        <th>Status / Activity</th>
+                        <th>Notes / Reason</th>
+                    </tr>
+                </thead>
+                <tbody id="facilityEventsTbody">
+                    {% for event in recent_activities %}
+                    <tr class="facility-event-row" data-status="{{ event.new_status|lower }}" data-status-display="{{ event.new_status_display|lower }}">
+                        <td style="color:#94a3b8;font-size:12px;white-space:nowrap;">
+                            {{ event.timestamp|timesince }} ago
+                        </td>
+                        <td>
+                            <a href="{% url 'problem_detail' event.issue.pk %}" style="color:#ffffff;font-weight:600;text-decoration:none;">
+                                #{{ event.issue.id }} {{ event.issue.title|truncatechars:32 }}
+                            </a>
+                            <div style="color:#94a3b8;font-size:11px;margin-top:2px;">
+                                📍 {{ event.issue.get_location_display|truncatechars:36 }}
+                            </div>
+                        </td>
+                        <td style="font-size:12.5px;">
+                            {% if event.actor %}
+                            <span style="font-weight:600;color:#f1f5f9;">{{ event.actor.get_full_name|default:event.actor.username }}</span>
+                            {% else %}
+                            <span style="color:#94a3b8;">System</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if event.event_type == 'status_change' %}
+                            <span class="badge-status badge-{{ event.new_status }}">{{ event.new_status_display }}</span>
+                            {% elif event.event_type == 'reopen_request' %}
+                            <span class="badge-priority badge-priority-medium">Reopen Requested</span>
+                            {% elif event.event_type == 'verification' %}
+                            <span class="badge-priority badge-priority-low">Student Verified</span>
+                            {% else %}
+                            <span class="badge-status badge-submitted">{{ event.label }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="color:#cbd5e1;font-size:12px;max-width:260px;">
+                            {% if event.note %}
+                            <em>{{ event.note|truncatechars:45 }}</em>
+                            {% else %}
+                            <span style="color:#64748b;">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align:center;padding:32px;color:#94a3b8;">
+                            No recent facility events recorded in the database.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr id="noMatchEventRow" style="display:none;">
+                        <td colspan="5" style="text-align:center;padding:28px 16px;color:#94a3b8;">
+                            <div style="font-size:18px;margin-bottom:6px;">🔍</div>
+                            <div style="font-size:13px;color:#cbd5e1;font-weight:600;">No matching facility events found</div>
+                            <div style="font-size:11.5px;color:#64748b;margin-top:4px;">Try searching for a different keyword or <a href="javascript:void(0)" onclick="clearEventSearch()" style="color:#60a5fa;text-decoration:underline;">clear search filters</a>.</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function filterFacilityEvents() {
+    var searchInput = document.getElementById('facilityEventSearch');
+    var statusSelect = document.getElementById('facilityEventStatusFilter');
+    var clearBtn = document.getElementById('clearEventSearchBtn');
+    var noMatchRow = document.getElementById('noMatchEventRow');
+
+    var query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+    var selectedStatus = (statusSelect ? statusSelect.value : 'all').toLowerCase();
+
+    if (clearBtn) {
+        clearBtn.style.display = query ? 'block' : 'none';
+    }
+
+    var rows = document.querySelectorAll('.facility-event-row');
+    var visibleCount = 0;
+
+    rows.forEach(function(row) {
+        var rowText = (row.textContent || '').toLowerCase();
+        var rowStatus = (row.getAttribute('data-status') || '').toLowerCase();
+        var rowStatusDisplay = (row.getAttribute('data-status-display') || '').toLowerCase();
+
+        // 1. Text Query Matching (supports multiple terms like "wifi central" or "ac closed")
+        var matchesQuery = true;
+        if (query) {
+            var terms = query.split(/\s+/);
+            matchesQuery = terms.every(function(term) {
+                return rowText.indexOf(term) !== -1 || rowStatus.indexOf(term) !== -1 || rowStatusDisplay.indexOf(term) !== -1;
+            });
+        }
+
+        // 2. Status Dropdown Matching
+        var matchesStatus = true;
+        if (selectedStatus && selectedStatus !== 'all') {
+            matchesStatus = (rowStatus === selectedStatus) || 
+                            (rowStatusDisplay.indexOf(selectedStatus) !== -1) ||
+                            (selectedStatus === 'in_progress' && (rowStatus === 'in_progress' || rowStatusDisplay.indexOf('progress') !== -1)) ||
+                            (selectedStatus === 'submitted' && (rowStatus === 'submitted' || rowStatusDisplay.indexOf('submitted') !== -1));
+        }
+
+        if (matchesQuery && matchesStatus) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    if (noMatchRow) {
+        noMatchRow.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
+    }
+}
+
+function clearEventSearch() {
+    var searchInput = document.getElementById('facilityEventSearch');
+    var statusSelect = document.getElementById('facilityEventStatusFilter');
+    if (searchInput) searchInput.value = '';
+    if (statusSelect) statusSelect.value = 'all';
+    filterFacilityEvents();
+    if (searchInput) searchInput.focus();
+}
+</script>
+{% endblock %}
