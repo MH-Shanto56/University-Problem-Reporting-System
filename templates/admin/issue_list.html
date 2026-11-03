@@ -1,0 +1,246 @@
+{% extends 'admin/admin_base.html' %}
+
+{% block title %}Issue Management - UPRS Admin Portal{% endblock %}
+{% block breadcrumb %}Issue Management{% endblock %}
+
+{% block admin_content %}
+<!-- PAGE HEADER -->
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">Campus Issue Management</h1>
+        <p class="admin-page-subtitle">
+            Search, filter, track lifecycle statuses, and manage university problem reports.
+        </p>
+    </div>
+    <div class="admin-header-actions">
+        <a href="{% url 'admin_resolutions' %}" class="btn-admin btn-admin-secondary">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>Resolution & Reopens</span>
+        </a>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- SEARCH & FILTER BAR                                                    -->
+<!-- ====================================================================== -->
+<div class="admin-card">
+    <form method="GET" action="{% url 'admin_issues' %}" class="admin-filters">
+        <div style="flex:2;min-width:200px;">
+            <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Search by title, description, or room/building..." class="admin-input" style="width:100%;">
+        </div>
+
+        {% if user.is_superuser %}
+        <div style="flex:1;min-width:140px;">
+            <select name="department" class="admin-select" style="width:100%;">
+                <option value="">All Departments</option>
+                {% for d in departments %}
+                <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:'s' %}selected{% endif %}>{{ d.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div style="flex:1;min-width:130px;">
+            <select name="status" class="admin-select" style="width:100%;">
+                <option value="">All Statuses</option>
+                <option value="submitted" {% if selected_status == 'submitted' %}selected{% endif %}>Submitted</option>
+                <option value="in_progress" {% if selected_status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                <option value="resolved" {% if selected_status == 'resolved' %}selected{% endif %}>Resolved</option>
+                <option value="closed" {% if selected_status == 'closed' %}selected{% endif %}>Closed</option>
+            </select>
+        </div>
+
+        <div style="flex:1;min-width:140px;">
+            <select name="priority" class="admin-select" style="width:100%;">
+                <option value="">All Priorities</option>
+                <option value="urgent" {% if selected_priority == 'urgent' %}selected{% endif %}>🚨 Urgent</option>
+                <option value="high_supported" {% if selected_priority == 'high_supported' %}selected{% endif %}>🔥 High &amp; Supported</option>
+                <option value="high" {% if selected_priority == 'high' %}selected{% endif %}>High Priority Only</option>
+                <option value="supported" {% if selected_priority == 'supported' %}selected{% endif %}>⭐ Community Supported</option>
+                <option value="medium" {% if selected_priority == 'medium' %}selected{% endif %}>Medium Priority</option>
+                <option value="low" {% if selected_priority == 'low' %}selected{% endif %}>Low Priority</option>
+            </select>
+        </div>
+
+        <div style="flex:1;min-width:130px;">
+            <select name="category" class="admin-select" style="width:100%;">
+                <option value="">All Categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="display:flex;gap:6px;">
+            <button type="submit" class="btn-admin btn-admin-primary">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <span>Filter</span>
+            </button>
+            {% if query or selected_status or selected_priority or selected_category or selected_department %}
+            <a href="{% url 'admin_issues' %}" class="btn-admin btn-admin-secondary" title="Reset Filters">
+                <i class="fa-solid fa-rotate-left"></i>
+            </a>
+            {% endif %}
+        </div>
+    </form>
+
+    <!-- ISSUE DATA TABLE -->
+    <div class="admin-table-container">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th style="width:70px;">ID</th>
+                    <th>Problem & Location</th>
+                    <th>Category</th>
+                    <th>Priority</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Reported</th>
+                    <th style="text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for issue in page_obj %}
+                <tr>
+                    <td style="font-weight:700;color:var(--admin-blue-600);">
+                        #{{ issue.id }}
+                    </td>
+                    <td>
+                        <a href="{% url 'problem_detail' issue.pk %}" style="color:var(--admin-text-main);font-weight:600;text-decoration:none;font-size:14px;">
+                            {{ issue.title }}
+                        </a>
+                        <div style="color:var(--admin-text-muted);font-size:12px;margin-top:2px;">
+                            📍 {{ issue.get_location_display }}
+                        </div>
+                    </td>
+                    <td>
+                        <span style="font-size:12px;color:var(--admin-navy-700);font-weight:500;">
+                            {{ issue.category }}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            {% if user.is_superuser %}
+                            <form method="POST" action="{% url 'admin_change_priority' %}" style="display:inline-block;">
+                                {% csrf_token %}
+                                <input type="hidden" name="issue_id" value="{{ issue.id }}">
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <select name="priority" onchange="this.form.submit()" title="Click to change priority or escalate to Urgent" style="padding:4px 8px;font-size:12px;background:#1c1917;color:{% if issue.priority == 'urgent' %}#fca5a5{% elif issue.priority == 'high' %}#fdba74{% else %}#f1f5f9{% endif %};border:1px solid {% if issue.priority == 'urgent' %}#ef4444{% elif issue.priority == 'high' %}rgba(249,115,22,0.5){% else %}rgba(255,255,255,0.15){% endif %};border-radius:6px;cursor:pointer;font-weight:700;">
+                                    <option value="urgent" {% if issue.priority == 'urgent' %}selected{% endif %}>🚨 Urgent</option>
+                                    <option value="high" {% if issue.priority == 'high' %}selected{% endif %}>🔥 High</option>
+                                    <option value="medium" {% if issue.priority == 'medium' %}selected{% endif %}>⚡ Medium</option>
+                                    <option value="low" {% if issue.priority == 'low' %}selected{% endif %}>🟢 Low</option>
+                                </select>
+                            </form>
+                            {% else %}
+                                {% if issue.priority == 'urgent' %}
+                                <span style="background:#dc2626;color:#ffffff;font-size:11.5px;font-weight:800;padding:2px 8px;border-radius:6px;box-shadow:0 0 8px rgba(220,38,38,0.5);display:inline-flex;align-items:center;gap:4px;">
+                                    🚨 Urgent
+                                </span>
+                                {% elif issue.priority == 'high' %}
+                                <span class="badge-priority badge-priority-high">🔥 High</span>
+                                {% elif issue.priority == 'low' %}
+                                <span class="badge-priority badge-priority-low">Low</span>
+                                {% else %}
+                                <span class="badge-priority badge-priority-medium">Medium</span>
+                                {% endif %}
+                            {% endif %}
+                            {% if issue.num_votes > 0 %}
+                            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 7px;border-radius:12px;background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.35);" title="{{ issue.num_votes }} student support votes">
+                                ⭐ {{ issue.num_votes }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if user.is_superuser %}
+                        <form method="POST" action="{% url 'admin_assign_issue' %}" style="display:inline-block;">
+                            {% csrf_token %}
+                            <input type="hidden" name="issue_id" value="{{ issue.id }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <select name="department_id" onchange="this.form.submit()" title="Click to assign or reassign department" style="padding:4px 8px;font-size:12px;background:#1c1917;color:{% if issue.department %}#f1f5f9{% else %}#f87171{% endif %};border:1px solid {% if issue.department %}rgba(255,255,255,0.15){% else %}rgba(239,68,68,0.4){% endif %};border-radius:6px;max-width:150px;cursor:pointer;">
+                                <option value="" {% if not issue.department %}selected{% endif %}>⚠️ Unassigned</option>
+                                {% for d in departments %}
+                                <option value="{{ d.id }}" {% if issue.department_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                        {% else %}
+                            {% if issue.department %}
+                            <span style="font-weight:600;font-size:12px;color:#f1f5f9;">{{ issue.department.name }}</span>
+                            {% else %}
+                            <span style="color:#f87171;font-size:11px;font-weight:600;">Unassigned</span>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge-status badge-{{ issue.status }}">
+                            {{ issue.get_status_display }}
+                        </span>
+                    </td>
+                    <td style="color:var(--admin-text-muted);font-size:12px;white-space:nowrap;">
+                        {{ issue.created_at|date:"M d, Y" }}
+                        <div style="font-size:11px;color:var(--admin-text-light);">{{ issue.created_at|timesince }} ago</div>
+                    </td>
+                    <td style="text-align:right;white-space:nowrap;">
+                        <!-- Quick Workflow Actions -->
+                        {% if issue.status == 'submitted' %}
+                        <form method="POST" action="{% url 'update_issue_status' issue.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="in_progress">
+                            <input type="hidden" name="reason" value="Accepted by administration / work started.">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn-admin btn-admin-primary btn-admin-sm" title="Accept & Start Work">
+                                <i class="fa-solid fa-play"></i> Accept
+                            </button>
+                        </form>
+                        {% elif issue.status == 'in_progress' %}
+                        <span style="font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:12px;background:rgba(245,158,11,0.12);color:#d97706;border:1px solid rgba(245,158,11,0.25);white-space:nowrap;display:inline-flex;align-items:center;gap:4px;" title="Department is actively performing repairs">
+                            <i class="fa-solid fa-wrench"></i> In Dept Queue
+                        </span>
+                        {% elif issue.status == 'resolved' %}
+                        <a href="{% url 'problem_detail' issue.pk %}" class="btn-admin btn-admin-success btn-admin-sm" style="font-weight:600;white-space:nowrap;" title="Review Department Report & Decide">
+                            <i class="fa-solid fa-gavel"></i> Review &amp; Close
+                        </a>
+                        {% endif %}
+
+                        <a href="{% url 'problem_detail' issue.pk %}" class="btn-admin btn-admin-secondary btn-admin-sm" title="View Full Report">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" style="text-align:center;padding:40px;color:var(--admin-text-muted);">
+                        <i class="fa-solid fa-inbox" style="font-size:32px;margin-bottom:10px;display:block;color:var(--admin-text-light);"></i>
+                        No issues found matching the specified filters.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- PAGINATION -->
+    {% if page_obj.has_other_pages %}
+    <div style="padding:16px 20px;border-top:1px solid var(--admin-border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <span style="font-size:13px;color:var(--admin-text-muted);">
+            Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ page_obj.paginator.count }} total issues)
+        </span>
+        <div style="display:flex;gap:6px;">
+            {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_priority %}&priority={{ selected_priority }}{% endif %}{% if selected_department %}&department={{ selected_department }}{% endif %}" class="btn-admin btn-admin-secondary btn-admin-sm">
+                ← Previous
+            </a>
+            {% endif %}
+            
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_priority %}&priority={{ selected_priority }}{% endif %}{% if selected_department %}&department={{ selected_department }}{% endif %}" class="btn-admin btn-admin-secondary btn-admin-sm">
+                Next →
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
