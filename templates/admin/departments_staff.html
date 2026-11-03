@@ -1,0 +1,630 @@
+{% extends 'admin/admin_base.html' %}
+
+{% block title %}Departments & Staff - UPRS Admin Portal{% endblock %}
+{% block breadcrumb %}Departments & Staff{% endblock %}
+
+{% block admin_content %}
+<!-- PAGE HEADER -->
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">University Departments, Staff & Issue Assignment</h1>
+        <p class="admin-page-subtitle">
+            Manage operational departments, staff authorization mapping, and manually assign campus issues to responsible units.
+        </p>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- 1. DEPARTMENTS DIRECTORY                                               -->
+<!-- ====================================================================== -->
+<div class="admin-card">
+    <div class="admin-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h3 class="admin-card-title">
+            <i class="fa-solid fa-building-user" style="color:#60a5fa;"></i>
+            <span>University Operational Departments ({{ departments.count }})</span>
+        </h3>
+        <button type="button" class="btn-submit" onclick="toggleNewDeptForm()" style="font-size:12px;padding:7px 14px;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg, #2563eb, #7c3aed);border-color:#2563eb;">
+            <i class="fa-solid fa-plus"></i> Add New Department
+        </button>
+    </div>
+
+    <!-- COLLAPSIBLE NEW DEPARTMENT FORM -->
+    <div id="newDeptFormBox" style="display:none;padding:20px;background:rgba(37,99,235,0.06);border-bottom:1px solid rgba(255,255,255,0.08);">
+        <h4 style="color:#ffffff;font-size:14px;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:8px;">
+            <i class="fa-solid fa-plus-circle" style="color:#60a5fa;"></i> Create New Operational Department
+        </h4>
+        <form method="POST" action="{% url 'admin_departments' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_department">
+            <div style="display:grid;grid-template-columns:2fr 1fr 2fr;gap:12px;margin-bottom:12px;">
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:6px;">Department Name *</label>
+                    <input type="text" name="name" placeholder="e.g. Medical Center & Healthcare" required class="form-input" style="width:100%;font-size:13px;padding:9px 12px;background:#18181b;color:white;border:1px solid rgba(255,255,255,0.12);border-radius:6px;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:6px;">Short Code *</label>
+                    <input type="text" name="code" placeholder="e.g. MED" required class="form-input" style="width:100%;font-size:13px;padding:9px 12px;background:#18181b;color:white;border:1px solid rgba(255,255,255,0.12);border-radius:6px;text-transform:uppercase;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:6px;">Official Contact Email</label>
+                    <input type="email" name="contact_email" placeholder="e.g. medical@uap-bd.edu" class="form-input" style="width:100%;font-size:13px;padding:9px 12px;background:#18181b;color:white;border:1px solid rgba(255,255,255,0.12);border-radius:6px;">
+                </div>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:6px;">Description / Responsibilities</label>
+                <input type="text" name="description" placeholder="Brief description of duties and managed campus issues" class="form-input" style="width:100%;font-size:13px;padding:9px 12px;background:#18181b;color:white;border:1px solid rgba(255,255,255,0.12);border-radius:6px;">
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button type="submit" class="btn-submit" style="padding:8px 18px;font-size:13px;">Save & Activate Department</button>
+                <button type="button" onclick="toggleNewDeptForm()" style="padding:8px 14px;font-size:13px;background:transparent;border:1px solid rgba(255,255,255,0.15);color:#94a3b8;border-radius:6px;cursor:pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+    function toggleNewDeptForm() {
+        var box = document.getElementById('newDeptFormBox');
+        box.style.display = (box.style.display === 'none' || box.style.display === '') ? 'block' : 'none';
+    }
+    </script>
+    <div class="admin-table-container">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th style="width:110px;">Code</th>
+                    <th>Department Name</th>
+                    <th>Department Head</th>
+                    <th>Contact Email</th>
+                    <th>Authorized Staff</th>
+                    <th>Assigned Issues</th>
+                    <th style="text-align:right;width:150px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in departments %}
+                <tr>
+                    <td>
+                        <span style="font-family:monospace;font-weight:700;font-size:12.5px;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#ffffff;">
+                            {{ d.code }}
+                        </span>
+                    </td>
+                    <td style="font-weight:600;color:#ffffff;font-size:14px;">
+                        {{ d.name }}
+                    </td>
+                    <td style="color:#f1f5f9;">
+                        {{ d.head_name|default:"Not specified" }}
+                    </td>
+                    <td style="color:#94a3b8;">
+                        {{ d.contact_email|default:"uprs-support@uap-bd.edu" }}
+                    </td>
+                    <td>
+                        <span style="font-weight:600;color:#93c5fd;font-size:13px;">
+                            {{ d.staff_profiles.count }} staff member{{ d.staff_profiles.count|pluralize }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{% url 'admin_issues' %}?department={{ d.id }}" style="font-weight:600;color:#93c5fd;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:4px;">
+                            <span>{{ d.issues.count }} issue{{ d.issues.count|pluralize }}</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:11px;"></i>
+                        </a>
+                    </td>
+                    <td style="text-align:right;">
+                        {% if user.is_superuser %}
+                        <div style="display:inline-flex;gap:6px;align-items:center;justify-content:flex-end;">
+                            <button type="button" onclick="openEditDeptModal('{{ d.id }}')" class="btn-admin btn-admin-secondary btn-admin-sm" title="Edit Department & Code">
+                                <i class="fa-solid fa-pen-to-square" style="color:#60a5fa;"></i> Edit
+                            </button>
+                            <form method="POST" action="{% url 'admin_departments' %}" onsubmit="return confirm('Are you sure you want to delete department \'{{ d.name }} [{{ d.code }}]\'?\n\nAny assigned staff members and issues will become unassigned.');" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_department">
+                                <input type="hidden" name="department_id" value="{{ d.id }}">
+                                <button type="submit" class="btn-admin btn-admin-secondary btn-admin-sm" style="color:#f87171;border-color:rgba(239,68,68,0.3);" title="Delete Department">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <span style="color:#64748b;font-size:12px;">Authorized</span>
+                        {% endif %}
+                    </td>
+                </tr>
+
+                <!-- MODAL: EDIT DEPARTMENT DETAILS & CODE -->
+                {% if user.is_superuser %}
+                <div id="editDeptModal_{{ d.id }}" onclick="if(event.target===this)closeEditDeptModal('{{ d.id }}')" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 16px;backdrop-filter:blur(6px);box-sizing:border-box;">
+                    <div style="background:#1c1917;border:1px solid rgba(255,255,255,0.15);border-radius:14px;width:100%;max-width:520px;padding:22px 24px;box-shadow:0 20px 40px rgba(0,0,0,0.7);text-align:left;margin:20px auto;box-sizing:border-box;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:10px;">
+                            <h3 style="margin:0;font-size:16.5px;font-weight:700;color:#ffffff;display:flex;align-items:center;gap:8px;">
+                                <i class="fa-solid fa-building-circle-check" style="color:#60a5fa;"></i> Edit Department: {{ d.name }}
+                            </h3>
+                            <button type="button" onclick="closeEditDeptModal('{{ d.id }}')" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer;line-height:1;">&times;</button>
+                        </div>
+                        <form method="POST" action="{% url 'admin_departments' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="edit_department">
+                            <input type="hidden" name="department_id" value="{{ d.id }}">
+
+                            <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px;">
+                                <div>
+                                    <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">
+                                        Department Name <span style="color:#ef4444;">*</span>
+                                    </label>
+                                    <input type="text" name="name" value="{{ d.name }}" required class="form-input" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                                </div>
+                                <div>
+                                    <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">
+                                        Short Code <span style="color:#ef4444;">*</span>
+                                    </label>
+                                    <input type="text" name="code" value="{{ d.code }}" required class="form-input" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;text-transform:uppercase;font-family:monospace;font-weight:700;">
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">Official Contact Email</label>
+                                <input type="email" name="contact_email" value="{{ d.contact_email }}" placeholder="e.g. medical@uap-bd.edu" class="form-input" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                            </div>
+
+                            <div style="margin-bottom:16px;">
+                                <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">Description / Duties</label>
+                                <textarea name="description" rows="2" class="form-textarea" placeholder="Brief description of duties and managed campus issues" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">{{ d.description }}</textarea>
+                            </div>
+
+                            <div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;">
+                                <button type="button" onclick="closeEditDeptModal('{{ d.id }}')" class="btn-admin btn-admin-secondary btn-admin-sm">Cancel</button>
+                                <button type="submit" class="btn-admin btn-admin-primary btn-admin-sm">
+                                    <i class="fa-solid fa-floppy-disk"></i> Save Department Updates
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align:center;padding:28px;color:#94a3b8;">
+                        No departments registered in database.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- 2. DIRECT ISSUE ASSIGNMENT WORKFLOW                                    -->
+<!-- ====================================================================== -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <div>
+            <h3 class="admin-card-title">
+                <i class="fa-solid fa-list-check" style="color:#34d399;"></i>
+                <span>Direct Problem Assignment to Department</span>
+            </h3>
+            <p style="font-size:12.5px;color:#94a3b8;margin:4px 0 0;">
+                Assign newly reported issues or reassign/revoke active tasks for operational units (e.g. Civil Maintenance, IT Support, Electrical).
+            </p>
+        </div>
+        <a href="{% url 'admin_issues' %}" class="btn-admin btn-admin-secondary btn-admin-sm">
+            View All Issues →
+        </a>
+    </div>
+    <div class="admin-table-container">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th style="width:90px;">Issue #</th>
+                    <th>Title & Location</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Current Department</th>
+                    <th style="text-align:right;min-width:280px;">Assignment Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for iss in active_issues %}
+                <tr>
+                    <td>
+                        <a href="{% url 'problem_detail' iss.pk %}" style="font-family:monospace;font-weight:700;color:#93c5fd;text-decoration:none;">
+                            #{{ iss.id }}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{% url 'problem_detail' iss.pk %}" style="font-weight:600;color:#ffffff;text-decoration:none;">
+                            {{ iss.title|truncatechars:35 }}
+                        </a>
+                        <div style="font-size:11.5px;color:#94a3b8;margin-top:2px;">
+                            📍 {{ iss.get_location_display|truncatechars:38 }}
+                        </div>
+                    </td>
+                    <td>
+                        <span style="font-size:12px;color:#cbd5e1;">{{ iss.category }}</span>
+                    </td>
+                    <td>
+                        <span class="badge-status badge-{{ iss.status }}">{{ iss.get_status_display }}</span>
+                    </td>
+                    <td>
+                        {% if iss.department %}
+                        <span style="font-weight:600;color:#f1f5f9;font-size:13px;display:inline-flex;align-items:center;gap:6px;">
+                            <i class="fa-solid fa-circle-check" style="color:#10b981;font-size:11px;"></i>
+                            <span>{{ iss.department.name }}</span>
+                            <span style="font-size:11px;color:#94a3b8;font-family:monospace;">[{{ iss.department.code }}]</span>
+                        </span>
+                        {% else %}
+                        <span style="color:#f87171;font-weight:600;font-size:12px;background:rgba(239,68,68,0.12);padding:2px 8px;border-radius:4px;border:1px solid rgba(239,68,68,0.3);display:inline-flex;align-items:center;gap:5px;">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Unassigned
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:right;">
+                        {% if iss.department %}
+                        <div style="display:inline-flex;gap:6px;align-items:center;justify-content:flex-end;">
+                            <!-- EDIT / SHIFT DEPARTMENT -->
+                            <form method="POST" action="{% url 'admin_assign_issue' %}" style="display:inline-flex;gap:6px;align-items:center;">
+                                {% csrf_token %}
+                                <input type="hidden" name="issue_id" value="{{ iss.id }}">
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <select name="department_id" class="admin-select" style="padding:6px 10px;font-size:12px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;max-width:170px;" title="Select new department to shift/reassign">
+                                    {% for d in departments %}
+                                    <option value="{{ d.id }}" {% if iss.department_id == d.id %}selected{% endif %}>
+                                        {{ d.name }} [{{ d.code }}]
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn-admin btn-admin-secondary btn-admin-sm" style="color:#60a5fa;border-color:rgba(96,165,250,0.3);" title="Edit / Shift Assigned Department">
+                                    <i class="fa-solid fa-pen-to-square"></i> Edit
+                                </button>
+                            </form>
+
+                            <!-- REVOKE ASSIGNMENT -->
+                            <form method="POST" action="{% url 'admin_assign_issue' %}" onsubmit="return confirm('Revoke department assignment for Issue #{{ iss.id }}?\n\nThis issue will become Unassigned and return to the unassigned queue.');" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="issue_id" value="{{ iss.id }}">
+                                <input type="hidden" name="action" value="revoke">
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="btn-admin btn-admin-secondary btn-admin-sm" style="color:#f87171;border-color:rgba(239,68,68,0.3);" title="Revoke Department Assignment">
+                                    <i class="fa-solid fa-ban"></i> Revoke
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <form method="POST" action="{% url 'admin_assign_issue' %}" style="display:inline-flex;gap:6px;align-items:center;justify-content:flex-end;">
+                            {% csrf_token %}
+                            <input type="hidden" name="issue_id" value="{{ iss.id }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <select name="department_id" class="admin-select" style="padding:6px 10px;font-size:12px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;max-width:180px;" required>
+                                <option value="">-- Choose Unit --</option>
+                                {% for d in departments %}
+                                <option value="{{ d.id }}">{{ d.name }} [{{ d.code }}]</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn-admin btn-admin-primary btn-admin-sm" title="Assign To Department">
+                                <i class="fa-solid fa-user-tag"></i> Assign
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align:center;padding:28px;color:#94a3b8;">
+                        No active issues awaiting assignment.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- 3. STAFF MEMBERS & AUTHORIZATION MAPPING                              -->
+<!-- ====================================================================== -->
+<div class="admin-card">
+    <div class="admin-card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+            <h3 class="admin-card-title">
+                <i class="fa-solid fa-user-shield" style="color:#fbbf24;"></i>
+                <span>Authorized Administrative Staff & Role Assignments</span>
+            </h3>
+            <span style="font-size:12px;color:#94a3b8;">
+                Create staff accounts, assign unique User ID & Login Password, manage operational department scope
+            </span>
+        </div>
+        {% if user.is_superuser %}
+        <button type="button" onclick="openCreateStaffModal()" class="btn-admin btn-admin-primary btn-admin-sm" style="display:inline-flex;align-items:center;gap:6px;">
+            <i class="fa-solid fa-user-plus"></i>
+            <span>+ Create Staff Account</span>
+        </button>
+        {% endif %}
+    </div>
+    <div class="admin-table-container">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>User ID / Username</th>
+                    <th>Full Name</th>
+                    <th>Email Address</th>
+                    <th>System Role</th>
+                    <th>Assigned Department</th>
+                    <th>Status</th>
+                    <th style="text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for st in staff_members %}
+                <tr>
+                    <td style="font-weight:700;color:#ffffff;font-family:monospace;font-size:13.5px;">
+                        {{ st.username }}
+                    </td>
+                    <td style="color:#f1f5f9;font-weight:600;">
+                        {{ st.get_full_name|default:"—" }}
+                    </td>
+                    <td style="color:#94a3b8;font-size:12.5px;">
+                        {{ st.email|default:"Not provided" }}
+                    </td>
+                    <td>
+                        {% if st.is_superuser %}
+                        <span class="badge-priority badge-priority-medium">Superuser / Admin</span>
+                        {% else %}
+                        <span class="badge-status badge-in_progress">Department Staff</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if st.is_superuser %}
+                        <span style="color:#34d399;font-weight:600;font-size:12px;">
+                            <i class="fa-solid fa-shield"></i> All Departments (Global Overseer)
+                        </span>
+                        {% elif st.profile.assigned_department %}
+                        <span style="font-weight:600;color:#93c5fd;">
+                            {{ st.profile.assigned_department.name }}
+                        </span>
+                        {% else %}
+                        <span style="color:#f87171;font-weight:600;font-size:12px;">
+                            ⚠️ Unassigned
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if st.is_active %}
+                        <span class="badge-status badge-resolved" style="font-size:11px;">Active</span>
+                        {% else %}
+                        <span class="badge-status badge-closed" style="font-size:11px;">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:right;white-space:nowrap;">
+                        {% if user.is_superuser %}
+                        <div style="display:inline-flex;gap:6px;align-items:center;">
+                            <button type="button" onclick="openEditStaffModal('{{ st.id }}')" class="btn-admin btn-admin-secondary btn-admin-sm" title="Edit Staff & Reset Password">
+                                <i class="fa-solid fa-pen"></i> Edit
+                            </button>
+                            {% if st.id != user.id %}
+                            <form method="POST" action="{% url 'admin_departments' %}" style="display:inline;" onsubmit="return confirm('Are you sure you want to permanently delete staff account \'{{ st.username }}\'?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_staff">
+                                <input type="hidden" name="user_id" value="{{ st.id }}">
+                                <button type="submit" class="btn-admin btn-admin-secondary btn-admin-sm" style="color:#f87171;" title="Delete Staff Account">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <span style="color:#64748b;font-size:12px;">Authorized</span>
+                        {% endif %}
+                    </td>
+                </tr>
+
+                <!-- MODAL: EDIT STAFF ACCOUNT (Inline per row) -->
+                {% if user.is_superuser %}
+                <div id="editStaffModal_{{ st.id }}" onclick="if(event.target===this)closeEditStaffModal('{{ st.id }}')" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 16px;backdrop-filter:blur(6px);box-sizing:border-box;">
+                    <div style="background:#1c1917;border:1px solid rgba(255,255,255,0.15);border-radius:14px;width:100%;max-width:520px;padding:22px 24px;box-shadow:0 20px 40px rgba(0,0,0,0.7);text-align:left;margin:20px auto;box-sizing:border-box;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:10px;">
+                            <h3 style="margin:0;font-size:16.5px;font-weight:700;color:#ffffff;display:flex;align-items:center;gap:8px;">
+                                <i class="fa-solid fa-user-pen" style="color:#60a5fa;"></i> Edit Staff: {{ st.username }}
+                            </h3>
+                            <button type="button" onclick="closeEditStaffModal('{{ st.id }}')" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer;line-height:1;">&times;</button>
+                        </div>
+                        <form method="POST" action="{% url 'admin_departments' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="edit_staff">
+                            <input type="hidden" name="user_id" value="{{ st.id }}">
+
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                                <div>
+                                    <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">Full Name</label>
+                                    <input type="text" name="full_name" value="{{ st.get_full_name }}" placeholder="e.g. Md. Tanvir Ahmed" class="form-input" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                                </div>
+                                <div>
+                                    <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">Email Address</label>
+                                    <input type="email" name="email" value="{{ st.email }}" placeholder="e.g. staff@univ.edu" class="form-input" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                                </div>
+                            </div>
+
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                                <div>
+                                    <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">Assigned Department</label>
+                                    <select name="assigned_department_id" class="form-select" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                                        <option value="">-- No Department (Global) --</option>
+                                        {% for d in departments %}
+                                        <option value="{{ d.id }}" {% if st.profile.assigned_department_id == d.id %}selected{% endif %}>
+                                            {{ d.name }} [{{ d.code }}]
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">System Role</label>
+                                    <select name="role" class="form-select" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                                        <option value="staff" {% if not st.is_superuser %}selected{% endif %}>Department Staff</option>
+                                        <option value="superuser" {% if st.is_superuser %}selected{% endif %}>Administrator</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- PASSWORD RESET FIELD -->
+                            <div style="margin-bottom:12px;background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.15);border-radius:8px;padding:10px 12px;">
+                                <label style="display:block;font-size:12px;font-weight:600;color:#93c5fd;margin-bottom:5px;">
+                                    🔑 Set New Password
+                                </label>
+                                <div style="position:relative;">
+                                    <input type="password" name="new_password" id="edit_pass_{{ st.id }}" placeholder="Leave blank to keep existing password" class="form-input" style="width:100%;box-sizing:border-box;padding:8px 34px 8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                                    <button type="button" onclick="togglePassVisibility('edit_pass_{{ st.id }}', 'eye_edit_{{ st.id }}')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;">
+                                        <i class="fa-solid fa-eye" id="eye_edit_{{ st.id }}"></i>
+                                    </button>
+                                </div>
+                                <div style="font-size:11px;color:#94a3b8;margin-top:3px;">
+                                    Enter a new password if you want to reset their login credentials.
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+                                <input type="checkbox" name="is_active" id="active_{{ st.id }}" {% if st.is_active %}checked{% endif %} style="width:16px;height:16px;accent-color:#3b82f6;">
+                                <label for="active_{{ st.id }}" style="color:#cbd5e1;font-size:12.5px;cursor:pointer;margin:0;">
+                                    Active Account (Allowed to log into portal)
+                                </label>
+                            </div>
+
+                            <div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;">
+                                <button type="button" onclick="closeEditStaffModal('{{ st.id }}')" class="btn-admin btn-admin-secondary btn-admin-sm">Cancel</button>
+                                <button type="submit" class="btn-admin btn-admin-primary btn-admin-sm">
+                                    <i class="fa-solid fa-floppy-disk"></i> Save Updates
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align:center;padding:24px;color:#94a3b8;">
+                        No staff accounts registered. Click "+ Create Staff Account" above to register members.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- MODAL: CREATE NEW STAFF ACCOUNT                                        -->
+<!-- ====================================================================== -->
+{% if user.is_superuser %}
+<div id="createStaffModal" onclick="if(event.target===this)closeCreateStaffModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 16px;backdrop-filter:blur(6px);box-sizing:border-box;">
+    <div style="background:#1c1917;border:1px solid rgba(255,255,255,0.15);border-radius:14px;width:100%;max-width:520px;padding:22px 24px;box-shadow:0 20px 40px rgba(0,0,0,0.7);text-align:left;margin:20px auto;box-sizing:border-box;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:10px;">
+            <h3 style="margin:0;font-size:16.5px;font-weight:700;color:#ffffff;display:flex;align-items:center;gap:8px;">
+                <i class="fa-solid fa-user-plus" style="color:#60a5fa;"></i> Create Administrative Staff Account
+            </h3>
+            <button type="button" onclick="closeCreateStaffModal()" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer;line-height:1;">&times;</button>
+        </div>
+        <form method="POST" action="{% url 'admin_departments' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_staff">
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div>
+                    <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">
+                        User ID / Username <span style="color:#ef4444;">*</span>
+                    </label>
+                    <input type="text" name="username" placeholder="e.g. staff_civil" required class="form-input" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;font-family:monospace;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">
+                        Password <span style="color:#ef4444;">*</span>
+                    </label>
+                    <div style="position:relative;">
+                        <input type="password" name="password" id="createStaffPassword" placeholder="Set password" required class="form-input" style="width:100%;box-sizing:border-box;padding:8px 34px 8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                        <button type="button" onclick="togglePassVisibility('createStaffPassword', 'createEyeIcon')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;">
+                            <i class="fa-solid fa-eye" id="createEyeIcon"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div>
+                    <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">Full Name</label>
+                    <input type="text" name="full_name" placeholder="e.g. Engr. Mahmudul Hasan" class="form-input" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">Email Address</label>
+                    <input type="email" name="email" placeholder="e.g. staff@campus.edu" class="form-input" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                <div>
+                    <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">Assigned Department</label>
+                    <select name="assigned_department_id" class="form-select" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                        <option value="">-- No Department --</option>
+                        {% for d in departments %}
+                        <option value="{{ d.id }}">{{ d.name }} [{{ d.code }}]</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:12.5px;font-weight:600;color:#e2e8f0;margin-bottom:5px;">Role</label>
+                    <select name="role" class="form-select" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                        <option value="staff" selected>Department Staff</option>
+                        <option value="superuser">System Administrator</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;">
+                <button type="button" onclick="closeCreateStaffModal()" class="btn-admin btn-admin-secondary btn-admin-sm">Cancel</button>
+                <button type="submit" class="btn-admin btn-admin-primary btn-admin-sm">
+                    <i class="fa-solid fa-user-check"></i> Create Staff
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function openEditDeptModal(id) {
+    var m = document.getElementById('editDeptModal_' + id);
+    if (m) m.style.display = 'flex';
+}
+function closeEditDeptModal(id) {
+    var m = document.getElementById('editDeptModal_' + id);
+    if (m) m.style.display = 'none';
+}
+function openCreateStaffModal() {
+    var m = document.getElementById('createStaffModal');
+    if (m) m.style.display = 'flex';
+}
+function closeCreateStaffModal() {
+    var m = document.getElementById('createStaffModal');
+    if (m) m.style.display = 'none';
+}
+function openEditStaffModal(id) {
+    var m = document.getElementById('editStaffModal_' + id);
+    if (m) m.style.display = 'flex';
+}
+function closeEditStaffModal(id) {
+    var m = document.getElementById('editStaffModal_' + id);
+    if (m) m.style.display = 'none';
+}
+function togglePassVisibility(inputId, eyeId) {
+    var inp = document.getElementById(inputId);
+    var eye = document.getElementById(eyeId);
+    if (!inp || !eye) return;
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        eye.classList.remove('fa-eye');
+        eye.classList.add('fa-eye-slash');
+    } else {
+        inp.type = 'password';
+        eye.classList.remove('fa-eye-slash');
+        eye.classList.add('fa-eye');
+    }
+}
+</script>
+</div>
+{% endblock %}
