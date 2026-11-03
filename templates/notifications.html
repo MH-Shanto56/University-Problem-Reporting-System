@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Notifications - UPRS{% endblock %}
+
+{% block content %}
+<div style="max-width:860px;margin:36px auto;padding:0 20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+        <div>
+            <h1 style="font-size:26px;font-weight:700;color:#ffffff;margin:0 0 6px;">Notifications</h1>
+            <p style="color:#94a3b8;font-size:14px;margin:0;">Stay updated on your reported issues, updates, and community activity</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            {% if unread_notification_count > 0 %}
+            <form method="POST" action="{% url 'mark_all_notifications_read' %}" id="pageMarkAllReadBtn" style="margin:0;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary" style="font-size:13px;padding:8px 16px;display:inline-flex;align-items:center;gap:6px;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;cursor:pointer;border-radius:8px;">
+                    <i class="fa-solid fa-check-double"></i> Mark all as read
+                </button>
+            </form>
+            {% endif %}
+            {% if notifications %}
+            <span style="font-size:12px;color:#94a3b8;background:rgba(255,255,255,0.06);padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);">
+                {{ notifications.count }} Total Notification{{ notifications.count|pluralize }}
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+        {% for n in notifications %}
+        <div style="background:rgba(28,25,23,0.85);border:1px solid {% if not n.is_read %}rgba(59,130,246,0.4){% else %}rgba(255,255,255,0.08){% endif %};border-radius:12px;padding:16px 20px;display:flex;align-items:flex-start;gap:16px;backdrop-filter:blur(16px);transition:all 0.2s ease;{% if not n.is_read %}box-shadow:0 0 15px rgba(59,130,246,0.15);{% endif %}">
+            <div style="width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;border:1px solid rgba(255,255,255,0.08);">
+                {% if n.notification_type == 'vote' %}👍
+                {% elif n.notification_type == 'status' %}🔄
+                {% elif n.notification_type == 'duplicate' %}⚠️
+                {% elif n.notification_type == 'resolved' %}✅
+                {% elif n.notification_type == 'badge' %}🏅
+                {% else %}🔔{% endif %}
+            </div>
+            
+            <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+                    <h4 style="margin:0;font-size:15px;font-weight:600;color:#ffffff;">
+                        {{ n.title }}
+                        {% if not n.is_read %}
+                        <span class="notif-new-badge" style="font-size:10px;background:rgba(59,130,246,0.2);color:#93c5fd;border:1px solid rgba(59,130,246,0.4);padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600;">NEW</span>
+                        {% endif %}
+                    </h4>
+                    <span style="font-size:12px;color:#94a3b8;white-space:nowrap;">{{ n.created_at|timesince }} ago</span>
+                </div>
+                
+                <p style="margin:0 0 8px;font-size:13.5px;color:#cbd5e1;line-height:1.5;">
+                    {{ n.message }}
+                </p>
+
+                {% if n.issue %}
+                <a href="{% url 'mark_single_notification_read' n.pk %}" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#60a5fa;text-decoration:none;font-weight:500;padding:4px 0;">
+                    <span>View Issue #{{ n.issue.id }}</span>
+                    <span>→</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div style="background:rgba(28,25,23,0.75);border:1px solid rgba(255,255,255,0.08);border-radius:16px;text-align:center;padding:60px 20px;">
+            <div style="font-size:44px;margin-bottom:12px;opacity:0.8;">🔔</div>
+            <h3 style="font-size:18px;color:#ffffff;margin:0 0 6px;">No Notifications Yet</h3>
+            <p style="color:#94a3b8;font-size:13.5px;max-width:400px;margin:0 auto;">
+                When your issues are assigned, updated, verified, or voted on, official notifications will appear here.
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
