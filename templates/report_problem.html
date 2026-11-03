@@ -1,0 +1,825 @@
+{% extends 'base.html' %}
+{% block title %}Report Problem - UPRS{% endblock %}
+
+{% block extra_head %}
+<style>
+.location-type-toggle {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 8px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.type-option-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+.type-option-btn.active {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #60a5fa;
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
+}
+.location-panel {
+    display: none;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+.location-panel.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.duplicate-blocked-card {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 16px;
+    padding: 26px;
+    margin: 0 auto 30px;
+    max-width: 760px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+.duplicate-ambiguous-card {
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+    margin: 0 auto 30px;
+    max-width: 760px;
+}
+.char-counter {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: right;
+    margin-top: 4px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="section">
+    <div class="form-header">
+        <h1>Report a Campus Problem</h1>
+        <p>Help maintain university facilities and academic environment by reporting issues accurately</p>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- CONFIRMED DUPLICATE DETECTED (MANDATORY REQUIREMENT)           -->
+    <!-- Confirmed duplicate blocks submission                          -->
+    <!-- ============================================================== -->
+    {% if confirmed_duplicate %}
+    <div class="duplicate-blocked-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+            <span style="font-size:26px;">⚠️</span>
+            <div>
+                <h3 style="color:#ef4444;margin:0;font-size:20px;">This problem has already been reported.</h3>
+                <p style="color:var(--text-secondary);margin:4px 0 0;font-size:14px;">An active report for this exact problem is currently open and being processed by campus staff.</p>
+            </div>
+        </div>
+
+        <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:20px;margin:18px 0;border:1px solid rgba(255,255,255,0.06);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+                <h4 style="color:white;font-size:18px;margin:0;">{{ confirmed_duplicate.issue.title }}</h4>
+                <span class="status-badge status-{{ confirmed_duplicate.issue.status }}">{{ confirmed_duplicate.issue.get_status_display }}</span>
+            </div>
+
+            <div style="color:#93c5fd;font-size:13px;font-weight:600;margin:10px 0 8px;">
+                📍 {{ confirmed_duplicate.issue.get_location_display }}
+            </div>
+
+            <p style="color:var(--text-secondary);font-size:14px;line-height:1.6;margin:8px 0;">
+                {{ confirmed_duplicate.issue.description|truncatewords:40 }}
+            </p>
+
+            <div style="display:flex;align-items:center;gap:14px;color:var(--text-secondary);font-size:13px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">
+                <span style="color:#60a5fa;font-weight:bold;">👍 {{ confirmed_duplicate.issue.vote_count }} student support(s)</span>
+                <span>• Reported {{ confirmed_duplicate.issue.time_ago }}</span>
+                <span>• Category: {{ confirmed_duplicate.issue.category }}</span>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end;">
+            <a href="{% url 'report' %}" class="btn btn-secondary" style="padding:10px 20px;font-size:14px;">
+                Report Different Problem
+            </a>
+            <a href="{% url 'problem_detail' confirmed_duplicate.issue.pk %}" class="btn btn-secondary" style="padding:10px 22px;font-size:14px;">
+                View Existing Report →
+            </a>
+            <form method="POST" action="{% url 'support_duplicate' confirmed_duplicate.issue.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-size:14px;">
+                    👍 Support Existing Report
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ============================================================== -->
+    <!-- AMBIGUOUS DUPLICATES (REVIEW & CLARIFICATION)                  -->
+    <!-- ============================================================== -->
+    {% if ambiguous_duplicates and not confirmed_duplicate %}
+    <div class="duplicate-ambiguous-card">
+        <h3 style="color:#f59e0b;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+            <span>⚠️</span> Possible Similar Reports Detected
+        </h3>
+        <p style="color:var(--text-secondary);margin-bottom:16px;font-size:14px;">
+            Similar campus issues were recently logged near this location. Please check if your problem is already in the list:
+        </p>
+        {% for d in ambiguous_duplicates %}
+        <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px 18px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <div>
+                <a href="{% url 'problem_detail' d.issue.pk %}" target="_blank" style="color:white;font-weight:600;text-decoration:none;font-size:15px;">
+                    {{ d.issue.title }}
+                </a>
+                <div style="color:var(--text-secondary);font-size:12px;margin-top:4px;">
+                    {{ d.issue.get_location_display }} • {{ d.issue.time_ago }} • 👍 {{ d.issue.vote_count }} supports
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="color:#f59e0b;font-size:13px;font-weight:600;">{{ d.similarity }}% match</span>
+                <a href="{% url 'problem_detail' d.issue.pk %}" target="_blank" class="btn btn-secondary" style="padding:6px 14px;font-size:12px;">View</a>
+            </div>
+        </div>
+        {% endfor %}
+        <p style="color:var(--text-secondary);font-size:13px;margin-top:14px;">
+            If your problem is separate or requires specific repair details, you may confirm and submit below.
+        </p>
+    </div>
+    {% endif %}
+
+    {% if not confirmed_duplicate %}
+    <!-- ============================================================== -->
+    <!-- MAIN PROBLEM REPORTING FORM                                    -->
+    <!-- ============================================================== -->
+    <div class="form-container">
+        {% if form.errors %}
+        <div style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);border-radius:12px;padding:18px;margin-bottom:24px;">
+            <h4 style="color:#ef4444;margin:0 0 8px;font-size:16px;">⚠️ Please correct the errors below:</h4>
+            <ul style="color:#fca5a5;font-size:14px;margin:0;padding-left:20px;">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <form method="POST" enctype="multipart/form-data" id="reportForm">
+            {% csrf_token %}
+            {% if ambiguous_duplicates and not confirmed_duplicate %}
+            <input type="hidden" name="confirm_not_duplicate" value="1">
+            {% endif %}
+
+            <!-- Problem Details -->
+            <div class="form-group">
+                <label>Problem Title <span class="required">*</span></label>
+                <input type="text" name="title" value="{{ form.title.value|default:'' }}" placeholder="e.g. Projector HDMI cable broken in Room 702 / AC water leakage" required class="form-input">
+            </div>
+
+            <div class="form-group">
+                <label>Detailed Description <span class="required">*</span></label>
+                <textarea name="description" placeholder="Provide detailed symptoms (e.g. error code, exact location, when problem occurred, equipment serial if visible)" required class="form-textarea" rows="4">{{ form.description.value|default:'' }}</textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Problem Category <span class="required">*</span></label>
+                    <select name="category" required class="form-select">
+                        <option value="">-- Select Problem Category --</option>
+                        {% for c in categories %}
+                        <option value="{{ c }}" {% if form.category.value == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Priority Level</label>
+                    <select name="priority" class="form-select">
+                        <option value="low" {% if form.priority.value == 'low' %}selected{% endif %}>Low (Minor inconvenience)</option>
+                        <option value="medium" {% if form.priority.value != 'high' and form.priority.value != 'low' %}selected{% endif %}>Medium (Needs prompt attention)</option>
+                        <option value="high" {% if form.priority.value == 'high' %}selected{% endif %}>High (Severe / Class disrupting)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Target Operational Department (Optional)</label>
+                    <select name="target_department" class="form-select">
+                        <option value="">🤖 Auto-Assign (Smart routing based on category)</option>
+                        {% for d in departments %}
+                        <option value="{{ d.id }}">{{ d.name }} [{{ d.code }}]</option>
+                        {% endfor %}
+                    </select>
+                    <small style="color:var(--text-secondary);font-size:12px;margin-top:4px;display:block;">
+                        Leave as Auto-Assign to automatically dispatch to the responsible unit based on category.
+                    </small>
+                </div>
+            </div>
+
+            <!-- ========================================================== -->
+            <!-- HYBRID LOCATION MANAGEMENT INTERFACE                       -->
+            <!-- ========================================================== -->
+            <div class="form-group" style="margin-top:10px;">
+                <label style="font-size:16px;font-weight:700;color:white;margin-bottom:10px;display:block;">
+                    📍 Campus Location Identification <span class="required">*</span>
+                </label>
+                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:14px;">
+                    Select whether this problem occurs inside a registered classroom/lab, or in an open area/corridor near a landmark.
+                </p>
+
+                <!-- Hidden actual input for form submission -->
+                <input type="hidden" name="location_type" id="locationTypeInput" value="{{ form.location_type.value|default:'room' }}">
+
+                <!-- Interactive Segmented Selector -->
+                <div class="location-type-toggle">
+                    <button type="button" class="type-option-btn {% if form.location_type.value != 'landmark' %}active{% endif %}" id="btnTypeRoom" onclick="switchLocationMode('room')">
+                        🏢 Structured Room Location
+                    </button>
+                    <button type="button" class="type-option-btn {% if form.location_type.value == 'landmark' %}active{% endif %}" id="btnTypeLandmark" onclick="switchLocationMode('landmark')">
+                        📍 Flexible Landmark-Based Location
+                    </button>
+                </div>
+
+                <!-- MODE A: STRUCTURED ROOM LOCATION -->
+                <div id="panelRoom" class="location-panel {% if form.location_type.value != 'landmark' %}active{% endif %}">
+                    <div style="margin-bottom:14px;color:#93c5fd;font-size:13px;font-weight:600;">
+                        🏢 Structured Room Selection (Building → Floor → Room):
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>University Building <span class="required">*</span></label>
+                            <select name="building" id="buildingSelect" class="form-select">
+                                <option value="">-- Select University Building (e.g. Main Building, RH Building) --</option>
+                                {% for b in buildings %}
+                                <option value="{{ b.id }}" {% if form.building.value|stringformat:'s' == b.id|stringformat:'s' %}selected{% endif %}>
+                                    🏢 {{ b.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Floor Level <span class="required">*</span></label>
+                            <select name="floor" id="floorSelect" class="form-select">
+                                <option value="">-- Select Floor Level (e.g. Ground Floor, 7th Floor) --</option>
+                                {% if form.floor.value %}
+                                <option value="{{ form.floor.value }}" selected>Selected Floor</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Registered Room <span class="required">*</span></label>
+                            <select name="room" id="roomSelect" class="form-select">
+                                <option value="">-- Select Registered Room (e.g. Room 702, Software Lab 2) --</option>
+                                {% if form.room.value %}
+                                <option value="{{ form.room.value }}" selected>Selected Room</option>
+                                {% endif %}
+                            </select>
+                            <small id="roomHelpText" style="color:var(--text-secondary);font-size:12px;margin-top:6px;display:block;">
+                                Select a registered room from our system. If your room is not listed, please select another floor or contact Admin.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Equipment / Asset ID <span style="font-weight:normal;color:var(--text-secondary);">(Optional)</span></label>
+                            <input type="text" name="equipment_identifier" value="{{ form.equipment_identifier.value|default:'' }}" placeholder="e.g. AC-01, Projector-1, PC 24" class="form-input">
+                            <small style="color:var(--text-secondary);font-size:12px;margin-top:6px;display:block;">
+                                Specify equipment code to avoid false duplicate warnings on different assets in the same room.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODE B: LANDMARK-BASED LOCATION -->
+                <div id="panelLandmark" class="location-panel {% if form.location_type.value == 'landmark' %}active{% endif %}">
+                    <div style="margin-bottom:14px;color:#93c5fd;font-size:13px;font-weight:600;">
+                        📍 Relative Spatial Location & Landmark Reference:
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>University Building <span class="required">*</span></label>
+                            <select name="landmark_building" id="landmarkBuildingSelect" class="form-select" onchange="syncLandmarkBuilding(this.value)">
+                                <option value="">-- Select University Building (e.g. Main Building, RH Building) --</option>
+                                {% for b in buildings %}
+                                <option value="{{ b.id }}" {% if form.building.value|stringformat:'s' == b.id|stringformat:'s' %}selected{% endif %}>
+                                    🏢 {{ b.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Floor Level <span style="font-weight:normal;color:var(--text-secondary);">(Optional / Between Floors)</span></label>
+                            <select name="landmark_floor" id="landmarkFloorSelect" class="form-select" onchange="syncLandmarkFloor(this.value)">
+                                <option value="">-- Select Floor (or leave empty if between floors) --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nearby Landmark <span class="required">*</span></label>
+                            <select name="landmark" id="landmarkSelect" class="form-select">
+                                <option value="">-- Select Nearby Landmark (e.g. Auditorium, Elevator, Stairs) --</option>
+                                {% for lm in landmarks %}
+                                <option value="{{ lm.id }}" {% if form.landmark.value|stringformat:'s' == lm.id|stringformat:'s' %}selected{% endif %}>
+                                    📍 {{ lm.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Or Use a Registered Room as Reference</label>
+                            <select name="landmark_room" id="landmarkRoomSelect" class="form-select">
+                                <option value="">-- Reference Room (e.g. Room 404) --</option>
+                            </select>
+                            <small style="color:var(--text-secondary);font-size:12px;margin-top:4px;display:block;">
+                                Allows a room to be used as a reference point without treating the issue as inside that room.
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Relative Spatial Position <span class="required">*</span></label>
+                        <select name="relative_position" id="relativePositionSelect" class="form-select">
+                            {% for pos_val, pos_label in form.fields.relative_position.choices %}
+                            <option value="{{ pos_val }}" {% if form.relative_position.value == pos_val %}selected{% endif %}>{{ pos_label }}</option>
+                            {% endfor %}
+                        </select>
+                        <small style="color:var(--text-secondary);font-size:12px;margin-top:4px;display:block;">
+                            Important: Left vs Right and Before vs After are preserved as physically distinct locations.
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Precise Location Details <span class="required">*</span></label>
+                        <input type="text" name="custom_location_description" id="customLocDesc" value="{{ form.custom_location_description.value|default:'' }}" placeholder="e.g. Broken light on the left side after exiting the auditorium / Staircase before Room 404" class="form-input" maxlength="300" oninput="updateCharCount(this)">
+                        <div class="char-counter" id="charCounter">0 / 300 characters (Bangla & English supported)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload Photo Evidence (Up to 3 Photos with Cross to Delete) -->
+            <div class="form-group">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <label style="margin-bottom:0;">
+                        Photo Evidence <span style="font-weight:normal;color:var(--text-secondary);">(Optional - Max 3 Photos)</span>
+                    </label>
+                    <span id="photoCountBadge" style="font-size:12px;padding:3px 10px;border-radius:12px;background:rgba(59,130,246,0.15);color:#93c5fd;border:1px solid rgba(59,130,246,0.3);font-weight:600;">
+                        0 / 3 Photos
+                    </span>
+                </div>
+
+                <div class="upload-area" id="uploadArea" onclick="handleUploadAreaClick()" style="cursor:pointer;transition:all 0.25s ease;">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    <p id="uploadPrompt" style="margin:6px 0 2px;font-size:14px;color:#e2e8f0;font-weight:600;">Click to attach photo evidence (Max 3 photos)</p>
+                    <small id="uploadSubPrompt" style="color:var(--text-secondary);font-size:12px;">You can attach up to 3 photos one by one or together (JPG, PNG)</small>
+                    <input type="file" id="imageInput" name="images" accept="image/*" multiple style="display:none">
+                </div>
+
+                <!-- Preview Grid for attached photos (up to 3) with delete cross -->
+                <div id="imagePreviewGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:14px;margin-top:14px;"></div>
+            </div>
+
+            <!-- Visibility -->
+            <div class="form-group">
+                <label>Report Visibility</label>
+                <select name="visibility" class="form-select">
+                    <option value="public" selected>Public Report (Visible on campus dashboard & map)</option>
+                    <option value="private">Private Report (Confidential - Visible only to admin & maintenance staff)</option>
+                </select>
+            </div>
+
+            <!-- Hidden GPS Coordinate Inputs -->
+            <input type="hidden" name="latitude" id="latInput" value="{{ form.latitude.value|default:'' }}">
+            <input type="hidden" name="longitude" id="lngInput" value="{{ form.longitude.value|default:'' }}">
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="submit" class="btn-submit" id="btnSubmit">
+                    {% if ambiguous_duplicates and not confirmed_duplicate %}Submit Anyway{% else %}Submit Problem Report{% endif %}
+                </button>
+                <a href="{% url 'dashboard' %}" class="btn-cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Switch between Structured Room and Landmark mode
+function switchLocationMode(mode) {
+    document.getElementById('locationTypeInput').value = mode;
+    var btnRoom = document.getElementById('btnTypeRoom');
+    var btnLandmark = document.getElementById('btnTypeLandmark');
+    var panelRoom = document.getElementById('panelRoom');
+    var panelLandmark = document.getElementById('panelLandmark');
+
+    if (mode === 'room') {
+        btnRoom.classList.add('active');
+        btnLandmark.classList.remove('active');
+        panelRoom.classList.add('active');
+        panelLandmark.classList.remove('active');
+    } else {
+        btnLandmark.classList.add('active');
+        btnRoom.classList.remove('active');
+        panelLandmark.classList.add('active');
+        panelRoom.classList.remove('active');
+        // Sync building selection if already chosen
+        var bId = document.getElementById('buildingSelect').value;
+        if (bId) {
+            document.getElementById('landmarkBuildingSelect').value = bId;
+            loadLandmarkFloors(bId);
+        }
+    }
+}
+
+function syncLandmarkBuilding(val) {
+    document.getElementById('buildingSelect').value = val;
+    loadLandmarkFloors(val);
+    loadLandmarks(val);
+}
+
+function syncLandmarkFloor(val) {
+    document.getElementById('floorSelect').value = val;
+    loadRoomsForLandmark(val);
+}
+
+// Dependent Dropdowns AJAX Callers
+function loadFloors(buildingId, selectedFloorId) {
+    var floorSelect = document.getElementById('floorSelect');
+    var roomSelect = document.getElementById('roomSelect');
+    floorSelect.innerHTML = '<option value="">-- Loading Floors... --</option>';
+
+    if (!buildingId) {
+        floorSelect.innerHTML = '<option value="">-- Please Select University Building First --</option>';
+        roomSelect.innerHTML = '<option value="">-- Please Select Floor Level First --</option>';
+        return;
+    }
+
+    fetch('/api/floors/?building_id=' + buildingId)
+        .then(res => res.json())
+        .then(data => {
+            if (data.floors.length === 0) {
+                floorSelect.innerHTML = '<option value="">-- No registered floors found for this building --</option>';
+            } else {
+                floorSelect.innerHTML = '<option value="">-- Select Floor Level (e.g. Ground Floor, 7th Floor) --</option>';
+            }
+            data.floors.forEach(f => {
+                var opt = document.createElement('option');
+                opt.value = f.id;
+                opt.textContent = f.name;
+                if (selectedFloorId && String(f.id) === String(selectedFloorId)) {
+                    opt.selected = true;
+                }
+                floorSelect.appendChild(opt);
+            });
+            if (selectedFloorId) {
+                loadRooms(selectedFloorId, "{{ form.room.value|default:'' }}");
+            } else {
+                roomSelect.innerHTML = '<option value="">-- Please Select Floor Level First --</option>';
+            }
+        })
+        .catch(err => console.error("Error loading floors:", err));
+}
+
+function loadRooms(floorId, selectedRoomId) {
+    var roomSelect = document.getElementById('roomSelect');
+    var helpEl = document.getElementById('roomHelpText');
+    roomSelect.innerHTML = '<option value="">-- Loading Rooms... --</option>';
+
+    if (!floorId) {
+        roomSelect.innerHTML = '<option value="">-- Please Select Floor Level First --</option>';
+        if (helpEl) {
+            helpEl.textContent = 'Select a registered room from our system. If your room is not listed, please select another floor or contact Admin.';
+            helpEl.style.color = 'var(--text-secondary)';
+        }
+        return;
+    }
+
+    fetch('/api/rooms/?floor_id=' + floorId)
+        .then(res => res.json())
+        .then(data => {
+            if (data.rooms.length === 0) {
+                roomSelect.innerHTML = '<option value="">⚠️ Room not found in our system. Please select a valid room or contact Admin.</option>';
+                if (helpEl) {
+                    helpEl.textContent = 'Room not found in our system. Please select a valid room or contact Admin.';
+                    helpEl.style.color = '#f87171';
+                }
+            } else {
+                roomSelect.innerHTML = '<option value="">-- Select Registered Room (e.g. Room 702, Software Lab 2) --</option>';
+                if (helpEl) {
+                    helpEl.textContent = 'Select a registered room from our system. If your room is not listed, please select another floor or contact Admin.';
+                    helpEl.style.color = 'var(--text-secondary)';
+                }
+            }
+            data.rooms.forEach(r => {
+                var opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = r.room_number + ' (' + r.name + ')';
+                if (selectedRoomId && String(r.id) === String(selectedRoomId)) {
+                    opt.selected = true;
+                }
+                roomSelect.appendChild(opt);
+            });
+        })
+        .catch(err => console.error("Error loading rooms:", err));
+}
+
+function loadLandmarkFloors(buildingId) {
+    var flSelect = document.getElementById('landmarkFloorSelect');
+    if (!buildingId) return;
+
+    fetch('/api/floors/?building_id=' + buildingId)
+        .then(res => res.json())
+        .then(data => {
+            flSelect.innerHTML = '<option value="">-- Select Floor (or leave empty if between floors) --</option>';
+            data.floors.forEach(f => {
+                var opt = document.createElement('option');
+                opt.value = f.id;
+                opt.textContent = f.name;
+                flSelect.appendChild(opt);
+            });
+        });
+}
+
+function loadRoomsForLandmark(floorId) {
+    var lmRoomSelect = document.getElementById('landmarkRoomSelect');
+    if (!floorId) return;
+
+    fetch('/api/rooms/?floor_id=' + floorId)
+        .then(res => res.json())
+        .then(data => {
+            lmRoomSelect.innerHTML = '<option value="">-- Reference Room (e.g. Room 404) --</option>';
+            data.rooms.forEach(r => {
+                var opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = 'Room ' + r.room_number;
+                lmRoomSelect.appendChild(opt);
+            });
+        });
+}
+
+function loadLandmarks(buildingId) {
+    var lmSelect = document.getElementById('landmarkSelect');
+    if (!buildingId) return;
+
+    fetch('/api/landmarks/?building_id=' + buildingId)
+        .then(res => res.json())
+        .then(data => {
+            lmSelect.innerHTML = '<option value="">-- Select Nearby Landmark (e.g. Auditorium, Elevator, Stairs) --</option>';
+            data.landmarks.forEach(lm => {
+                var opt = document.createElement('option');
+                opt.value = lm.id;
+                opt.textContent = '📍 ' + lm.name;
+                lmSelect.appendChild(opt);
+            });
+        });
+}
+
+function updateCharCount(el) {
+    var count = el.value.length;
+    document.getElementById('charCounter').textContent = count + ' / 300 characters (Bangla & English supported)';
+}
+
+// Event Listeners
+document.getElementById('buildingSelect').addEventListener('change', function() {
+    loadFloors(this.value);
+});
+
+document.getElementById('floorSelect').addEventListener('change', function() {
+    loadRooms(this.value);
+});
+
+// Multi-Photo Evidence Manager (Max 3 Photos with Individual Delete Cross)
+var MAX_PHOTOS = 3;
+var attachedFiles = [];
+var imageInput = document.getElementById('imageInput');
+var uploadArea = document.getElementById('uploadArea');
+var uploadPrompt = document.getElementById('uploadPrompt');
+var uploadSubPrompt = document.getElementById('uploadSubPrompt');
+var imagePreviewGrid = document.getElementById('imagePreviewGrid');
+var photoCountBadge = document.getElementById('photoCountBadge');
+
+function handleUploadAreaClick() {
+    if (attachedFiles.length >= MAX_PHOTOS) {
+        alert('You have already attached the maximum limit of ' + MAX_PHOTOS + ' photos. Click ✕ on a photo to remove it if you want to replace it.');
+        return;
+    }
+    imageInput.click();
+}
+
+imageInput.addEventListener('change', function(e) {
+    if (!this.files || this.files.length === 0) return;
+
+    var newFiles = Array.from(this.files);
+    var excessAttempted = false;
+
+    for (var i = 0; i < newFiles.length; i++) {
+        var file = newFiles[i];
+        if (!file.type.startsWith('image/')) continue;
+        if (attachedFiles.length < MAX_PHOTOS) {
+            attachedFiles.push(file);
+        } else {
+            excessAttempted = true;
+        }
+    }
+
+    if (excessAttempted) {
+        alert('Notice: Maximum ' + MAX_PHOTOS + ' photos allowed. Only ' + MAX_PHOTOS + ' photos were kept.');
+    }
+
+    syncAndRenderPhotos();
+});
+
+function removePhotoAt(index) {
+    if (index >= 0 && index < attachedFiles.length) {
+        attachedFiles.splice(index, 1);
+        syncAndRenderPhotos();
+    }
+}
+
+function syncAndRenderPhotos() {
+    // Sync files array back into file input using DataTransfer
+    try {
+        var dt = new DataTransfer();
+        for (var i = 0; i < attachedFiles.length; i++) {
+            dt.items.add(attachedFiles[i]);
+        }
+        imageInput.files = dt.files;
+    } catch (err) {
+        console.warn('DataTransfer sync warning:', err);
+    }
+
+    // Reset input value so selecting the same file again triggers change event
+    imageInput.value = '';
+
+    // Update status badge & text prompts
+    var count = attachedFiles.length;
+    if (photoCountBadge) {
+        photoCountBadge.textContent = count + ' / ' + MAX_PHOTOS + ' Photos';
+        if (count === MAX_PHOTOS) {
+            photoCountBadge.style.background = 'rgba(16,185,129,0.2)';
+            photoCountBadge.style.borderColor = 'rgba(16,185,129,0.4)';
+            photoCountBadge.style.color = '#6ee7b7';
+        } else {
+            photoCountBadge.style.background = 'rgba(59,130,246,0.15)';
+            photoCountBadge.style.borderColor = 'rgba(59,130,246,0.3)';
+            photoCountBadge.style.color = '#93c5fd';
+        }
+    }
+
+    if (count === 0) {
+        uploadPrompt.textContent = 'Click to attach photo evidence (Max 3 photos)';
+        uploadSubPrompt.textContent = 'You can attach up to 3 photos one by one or together (JPG, PNG)';
+        uploadArea.style.opacity = '1';
+        uploadArea.style.borderColor = '';
+    } else if (count < MAX_PHOTOS) {
+        uploadPrompt.textContent = count + ' of ' + MAX_PHOTOS + ' photos attached. Click to add another photo';
+        uploadSubPrompt.textContent = 'You can add ' + (MAX_PHOTOS - count) + ' more photo' + (MAX_PHOTOS - count > 1 ? 's' : '');
+        uploadArea.style.opacity = '1';
+        uploadArea.style.borderColor = 'rgba(59,130,246,0.5)';
+    } else {
+        uploadPrompt.textContent = '✓ 3 of 3 photos attached (Maximum reached)';
+        uploadSubPrompt.textContent = 'Click the ✕ on any photo below to remove or replace it';
+        uploadArea.style.opacity = '0.85';
+        uploadArea.style.borderColor = 'rgba(16,185,129,0.5)';
+    }
+
+    // Render Preview Cards
+    imagePreviewGrid.innerHTML = '';
+    attachedFiles.forEach(function(file, idx) {
+        var card = document.createElement('div');
+        card.style.position = 'relative';
+        card.style.background = 'rgba(15,23,42,0.85)';
+        card.style.border = '1px solid rgba(255,255,255,0.14)';
+        card.style.borderRadius = '12px';
+        card.style.overflow = 'hidden';
+        card.style.boxShadow = '0 6px 16px rgba(0,0,0,0.4)';
+
+        var img = document.createElement('img');
+        img.style.width = '100%';
+        img.style.height = '120px';
+        img.style.objectFit = 'cover';
+        img.style.display = 'block';
+
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+
+        // Delete (✕) Cross Button
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.innerHTML = '✕';
+        delBtn.title = 'Remove this photo';
+        delBtn.style.position = 'absolute';
+        delBtn.style.top = '6px';
+        delBtn.style.right = '6px';
+        delBtn.style.width = '26px';
+        delBtn.style.height = '26px';
+        delBtn.style.background = 'rgba(239,68,68,0.95)';
+        delBtn.style.color = '#ffffff';
+        delBtn.style.border = '2px solid #ffffff';
+        delBtn.style.borderRadius = '50%';
+        delBtn.style.cursor = 'pointer';
+        delBtn.style.display = 'flex';
+        delBtn.style.alignItems = 'center';
+        delBtn.style.justifyContent = 'center';
+        delBtn.style.fontSize = '12px';
+        delBtn.style.fontWeight = 'bold';
+        delBtn.style.lineHeight = '1';
+        delBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.6)';
+        delBtn.style.transition = 'all 0.15s ease';
+        delBtn.style.zIndex = '5';
+        delBtn.onmouseover = function() {
+            this.style.background = '#dc2626';
+            this.style.transform = 'scale(1.15)';
+        };
+        delBtn.onmouseout = function() {
+            this.style.background = 'rgba(239,68,68,0.95)';
+            this.style.transform = 'scale(1)';
+        };
+        delBtn.onclick = function(event) {
+            event.stopPropagation();
+            removePhotoAt(idx);
+        };
+
+        // Badge: Photo #1, #2, #3
+        var numBadge = document.createElement('span');
+        numBadge.textContent = 'Photo ' + (idx + 1);
+        numBadge.style.position = 'absolute';
+        numBadge.style.top = '6px';
+        numBadge.style.left = '6px';
+        numBadge.style.background = 'rgba(0,0,0,0.75)';
+        numBadge.style.color = '#93c5fd';
+        numBadge.style.border = '1px solid rgba(59,130,246,0.5)';
+        numBadge.style.borderRadius = '6px';
+        numBadge.style.padding = '2px 8px';
+        numBadge.style.fontSize = '11px';
+        numBadge.style.fontWeight = '700';
+
+        // Filename footer
+        var fileFooter = document.createElement('div');
+        fileFooter.style.padding = '6px 8px';
+        fileFooter.style.fontSize = '11px';
+        fileFooter.style.color = '#94a3b8';
+        fileFooter.style.whiteSpace = 'nowrap';
+        fileFooter.style.overflow = 'hidden';
+        fileFooter.style.textOverflow = 'ellipsis';
+        fileFooter.textContent = file.name;
+
+        card.appendChild(img);
+        card.appendChild(numBadge);
+        card.appendChild(delBtn);
+        card.appendChild(fileFooter);
+        imagePreviewGrid.appendChild(card);
+    });
+}
+
+// Initialize on page load
+document.addEventListener("DOMContentLoaded", function() {
+    var bId = document.getElementById('buildingSelect').value;
+    var initFloor = "{{ form.floor.value|default:'' }}";
+    if (bId) {
+        loadFloors(bId, initFloor);
+    }
+    var descEl = document.getElementById('customLocDesc');
+    if (descEl) {
+        updateCharCount(descEl);
+    }
+});
+</script>
+{% endblock %}
