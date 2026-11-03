@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Problem Report - UPRS{% endblock %}
+
+{% block content %}
+<div class="section" style="max-width:600px;margin:60px auto;">
+    <div class="form-container" style="padding:40px;text-align:center;">
+        <div style="font-size:54px;margin-bottom:16px;">🗑️</div>
+        <h2 style="color:white;margin-bottom:12px;">Delete Problem Report</h2>
+        <p style="color:var(--text-secondary);font-size:16px;margin-bottom:24px;">
+            Are you sure you want to permanently delete: <br><strong style="color:white;">"{{ issue.title }}"</strong>?
+        </p>
+
+        <form method="POST" style="display:flex;gap:16px;justify-content:center;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary" style="background:#ef4444;color:white;border:none;padding:12px 28px;">
+                Yes, Delete
+            </button>
+            <a href="{% url 'issue_detail' issue.pk %}" class="btn btn-secondary" style="padding:12px 28px;text-decoration:none;">
+                Cancel
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

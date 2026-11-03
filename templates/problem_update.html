@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Update Campus Report - UPRS{% endblock %}
+
+{% block content %}
+<div class="section" style="max-width:800px;margin:40px auto;">
+    <div class="form-container" style="padding:36px;">
+        <h1 style="color:white;margin-bottom:8px;">Update Problem Report</h1>
+        <p style="color:var(--text-secondary);margin-bottom:24px;">
+            Edit the details of your reported campus issue and save changes.
+        </p>
+
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label>Problem Title</label>
+                {{ form.title }}
+            </div>
+
+            <div class="form-group">
+                <label>Detailed Description</label>
+                {{ form.description }}
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Category</label>
+                    {{ form.category }}
+                </div>
+
+                <div class="form-group">
+                    <label>Campus Location</label>
+                    {{ form.area }}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Priority</label>
+                    {{ form.priority }}
+                </div>
+
+                <div class="form-group">
+                    <label>Visibility</label>
+                    {{ form.visibility }}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Photo Evidence</label>
+                {% if issue.image %}
+                <div style="margin-bottom:12px;">
+                    <img src="{{ issue.image.url }}" style="max-width:200px;border-radius:10px;">
+                </div>
+                {% endif %}
+                {{ form.image }}
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:24px;">
+                <button type="submit" class="btn btn-primary" style="padding:12px 24px;">
+                    💾 Save Changes
+                </button>
+
+                <a href="{% url 'issue_detail' issue.pk %}" class="btn btn-secondary" style="padding:12px 24px;text-decoration:none;">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
