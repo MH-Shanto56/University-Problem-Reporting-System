@@ -1,0 +1,1094 @@
+{% extends 'base.html' %}
+{% block title %}{{ issue.title }} - UPRS{% endblock %}
+
+{% load static %}
+{% block extra_head %}
+<style>
+.status-tracker {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 24px 0;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    position: relative;
+    overflow-x: auto;
+}
+.tracker-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+    z-index: 1;
+    min-width: 90px;
+}
+.tracker-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+.tracker-step.completed .tracker-circle {
+    background: #10b981;
+    border-color: #10b981;
+    color: white;
+}
+.tracker-step.active .tracker-circle {
+    background: #3b82f6;
+    border-color: #60a5fa;
+    color: white;
+    box-shadow: 0 0 14px rgba(59, 130, 246, 0.6);
+}
+.tracker-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: center;
+}
+.tracker-step.active .tracker-label,
+.tracker-step.completed .tracker-label {
+    color: white;
+}
+.timeline-item {
+    position: relative;
+    padding-left: 28px;
+    margin-bottom: 18px;
+}
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 6px;
+    bottom: -18px;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.1);
+}
+.timeline-item:last-child::before {
+    display: none;
+}
+.timeline-dot {
+    position: absolute;
+    left: 2px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #3b82f6;
+    border: 2px solid #0f172a;
+}
+.verification-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 22px;
+    margin-top: 28px;
+}
+.choice-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.choice-box:hover {
+    border-color: rgba(59, 130, 246, 0.5);
+    background: rgba(59, 130, 246, 0.05);
+}
+.choice-box.resolved-choice {
+    border-color: rgba(16, 185, 129, 0.3);
+}
+.choice-box.still-choice {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="section" style="max-width:900px;margin:40px auto;">
+    <a href="{% url 'dashboard' %}" style="color:var(--purple);text-decoration:none;display:inline-flex;align-items:center;gap:6px;margin-bottom:20px;">
+        ← Back to Campus Dashboard
+    </a>
+
+
+
+    <div class="form-container" style="padding:0;overflow:hidden;">
+        {% if issue.image %}
+        <div style="background:#000000;text-align:center;position:relative;">
+            <img id="mainIssuePhoto" src="{{ issue.image.url }}" alt="{{ issue.title }}" style="width:100%;max-height:420px;object-fit:contain;display:block;margin:0 auto;cursor:pointer;" title="Click to view full photo in new tab" onclick="window.open(this.src, '_blank')">
+        </div>
+        {% if issue.additional_images.all %}
+        <div style="display:flex;gap:12px;padding:12px 20px;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.08);align-items:center;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--text-secondary);font-weight:600;"><i class="fa-solid fa-images"></i> Evidence Photos ({{ issue.all_images|length }}):</span>
+            <img src="{{ issue.image.url }}" onclick="document.getElementById('mainIssuePhoto').src=this.src; document.querySelectorAll('.evidence-thumb').forEach(t => t.style.borderColor='rgba(255,255,255,0.15)'); this.style.borderColor='#3b82f6';" class="evidence-thumb" style="width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid #3b82f6;transition:all 0.15s;" title="Photo 1 (Click to preview)">
+            {% for extra in issue.additional_images.all %}
+            <img src="{{ extra.image.url }}" onclick="document.getElementById('mainIssuePhoto').src=this.src; document.querySelectorAll('.evidence-thumb').forEach(t => t.style.borderColor='rgba(255,255,255,0.15)'); this.style.borderColor='#3b82f6';" class="evidence-thumb" style="width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid rgba(255,255,255,0.15);transition:all 0.15s;" title="Photo {{ forloop.counter|add:1 }} (Click to preview)">
+            {% endfor %}
+            <span style="font-size:11px;color:#94a3b8;margin-left:auto;">Click thumbnail to preview or click photo to view full size</span>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <div style="padding:30px;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+                {% if issue.priority == 'urgent' %}
+                <span class="priority-badge" style="background:linear-gradient(135deg, #dc2626, #991b1b);color:#ffffff;font-size:12px;font-weight:800;padding:4px 12px;border-radius:6px;box-shadow:0 0 12px rgba(220,38,38,0.6);letter-spacing:0.04em;">
+                    🚨 URGENT
+                </span>
+                {% else %}
+                <span class="priority-badge priority-{{ issue.priority }}">{{ issue.get_priority_display }}</span>
+                {% endif %}
+                <span class="status-badge status-{{ issue.status }}">{{ issue.get_status_display }}</span>
+                <span class="issue-tag">{{ issue.category }}</span>
+                {% if issue.department %}
+                <span class="issue-tag" style="background:rgba(59,130,246,0.15);border-color:rgba(59,130,246,0.3);color:#93c5fd;">
+                    🏢 Routed: {{ issue.department.name }}
+                </span>
+                {% endif %}
+            </div>
+
+            {% if issue.priority == 'urgent' and issue.status in 'submitted,in_progress' %}
+            <!-- Emergency Directive Top Callout Banner -->
+            <div style="background:linear-gradient(135deg, rgba(220,38,38,0.25) 0%, rgba(26,12,12,0.85) 100%);border:2px solid #ef4444;border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px;box-shadow:0 0 16px rgba(220,38,38,0.25);">
+                <span style="font-size:26px;">🚨</span>
+                <div>
+                    <div style="font-weight:800;color:#fca5a5;font-size:13.5px;letter-spacing:0.03em;text-transform:uppercase;">
+                        Urgent (Admin Escalated)
+                    </div>
+                    <div style="color:#ffffff;font-size:12.5px;margin-top:2px;">
+                        This issue has been escalated by University Administration as urgent. It has highest operational priority over standard routine tasks.
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:12px;padding:14px 18px;margin-bottom:20px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:18px;">📍</span>
+                    <strong style="color:#93c5fd;font-size:14px;">{{ issue.get_location_display }}</strong>
+                </div>
+                {% if issue.custom_location_description %}
+                <div style="color:var(--text-secondary);font-size:13px;margin-top:6px;padding-left:26px;">
+                    <strong>Location Note:</strong> <em>"{{ issue.custom_location_description }}"</em>
+                </div>
+                {% endif %}
+            </div>
+
+            <h1 style="color:white;font-size:28px;margin-bottom:12px;">{{ issue.title }}</h1>
+            <p style="color:var(--text-secondary);font-size:15px;line-height:1.7;margin-bottom:24px;">{{ issue.description }}</p>
+
+            <div style="display:flex;gap:20px;flex-wrap:wrap;color:var(--text-secondary);font-size:13px;margin-bottom:24px;">
+                <span>📅 Reported: {{ issue.created_at|date:"M d, Y H:i" }}</span>
+                <span>👤 Reporter: {{ issue.reporter.get_full_name|default:issue.reporter.username }}</span>
+                {% if issue.latitude and issue.longitude %}
+                <span>📍 GPS: {{ issue.latitude|floatformat:4 }}, {{ issue.longitude|floatformat:4 }}</span>
+                {% endif %}
+                <span>🔢 Priority Score: {{ issue.priority_score }}</span>
+            </div>
+
+            <!-- ACTION BUTTONS (For Reporter Only) -->
+            {% if user == issue.reporter %}
+            <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+                <a href="{% url 'problem_update' issue.pk %}" class="btn btn-primary" style="padding:8px 18px;text-decoration:none;font-size:14px;">
+                    ✏️ Update Report
+                </a>
+                <a href="{% url 'problem_delete' issue.pk %}" class="btn btn-secondary" style="padding:8px 18px;text-decoration:none;background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.4);color:#fca5a5;font-size:14px;">
+                    🗑️ Delete Report
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- VOTE / SUPPORT BUTTON -->
+            <div style="display:flex;align-items:center;gap:16px;padding:20px 0;border-top:1px solid rgba(255,255,255,0.08);">
+                {% if user.is_authenticated and not user.is_staff and not user.is_superuser %}
+                <form id="voteForm" method="POST" action="{% url 'problem_support' issue.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="button" id="voteBtn" onclick="toggleVote()" class="btn {% if user_voted %}btn-primary{% else %}btn-secondary{% endif %}" style="padding:10px 24px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+                        👍 <span id="voteText">{% if user_voted %}Supported{% else %}Support Problem{% endif %}</span>
+                    </button>
+                </form>
+                {% elif not user.is_authenticated %}
+                <a href="{% url 'login' %}?next={% url 'problem_detail' issue.pk %}" class="btn btn-secondary" style="padding:10px 24px;">
+                    Login to Support
+                </a>
+                {% endif %}
+                <span id="voteCount" style="color:white;font-weight:600;font-size:18px;">{{ issue.vote_count }}</span>
+                <span style="color:var(--text-secondary);">student support votes</span>
+            </div>
+
+            <!-- STATUS WORKFLOW TRACKER -->
+            <div class="status-tracker">
+                <div class="tracker-step {% if issue.status == 'submitted' %}active{% elif issue.status in 'in_progress,resolved,closed' %}completed{% endif %}">
+                    <div class="tracker-circle">1</div>
+                    <span class="tracker-label">Submitted</span>
+                </div>
+                <div style="flex:1;height:2px;background:{% if issue.status in 'in_progress,resolved,closed' %}#10b981{% else %}rgba(255,255,255,0.1){% endif %};margin:0 8px;"></div>
+                <div class="tracker-step {% if issue.status == 'in_progress' %}active{% elif issue.status in 'resolved,closed' %}completed{% endif %}">
+                    <div class="tracker-circle">2</div>
+                    <span class="tracker-label">In Progress</span>
+                </div>
+                <div style="flex:1;height:2px;background:{% if issue.status in 'resolved,closed' %}#10b981{% else %}rgba(255,255,255,0.1){% endif %};margin:0 8px;"></div>
+                <div class="tracker-step {% if issue.status == 'resolved' %}active{% elif issue.status == 'closed' %}completed{% endif %}">
+                    <div class="tracker-circle">3</div>
+                    <span class="tracker-label">Resolved</span>
+                </div>
+                <div style="flex:1;height:2px;background:{% if issue.status == 'closed' %}#10b981{% else %}rgba(255,255,255,0.1){% endif %};margin:0 8px;"></div>
+                <div class="tracker-step {% if issue.status == 'closed' %}active completed{% endif %}">
+                    <div class="tracker-circle">4</div>
+                    <span class="tracker-label">Closed</span>
+                </div>
+            </div>
+
+            {% if issue.reopen_requested %}
+            <div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);border-radius:12px;padding:16px;margin:20px 0;display:flex;align-items:center;gap:12px;">
+                <span style="font-size:24px;">⚠️</span>
+                <div>
+                    <strong style="color:#f59e0b;font-size:15px;">Student Reopen Request Pending Review</strong>
+                    <p style="color:var(--text-secondary);font-size:13px;margin:4px 0 0;">
+                        Requested by {{ issue.reopen_requested_by.get_full_name|default:issue.reopen_requested_by.username }} ({{ issue.reopen_requested_at|timesince }} ago):
+                        <em>"{{ issue.reopen_reason }}"</em>
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if issue.status == 'closed' %}
+            <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:12px;padding:16px;margin:20px 0;">
+                <div style="color:#10b981;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;">
+                    <span>✓</span> Officially Closed by University Staff
+                </div>
+                <p style="color:var(--text-secondary);font-size:13px;margin:6px 0 0;">
+                    Closed on {{ issue.closed_at|date:"M d, Y H:i" }}{% if issue.closed_by %} by {{ issue.closed_by.get_full_name|default:issue.closed_by.username }}{% endif %}.
+                    {% if issue.closure_reason %}<strong>Closure Note:</strong> <em>"{{ issue.closure_reason }}"</em>{% endif %}
+                </p>
+            </div>
+            {% endif %}
+
+            <!-- ============================================================== -->
+            <!-- COMMUNITY RESOLUTION VERIFICATION                             -->
+            <!-- ============================================================== -->
+            <div class="verification-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                    <h3 style="color:white;margin:0;font-size:18px;display:flex;align-items:center;gap:8px;">
+                        🔍 Community Resolution Verification
+                    </h3>
+                    <span style="color:var(--text-secondary);font-size:13px;">
+                        Cycle #{{ issue.resolution_attempt }} • {{ verification_summary.total }} Student Response(s)
+                    </span>
+                </div>
+
+                <!-- Verification Counts Summary -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:14px;margin-bottom:16px;">
+                    <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:14px;text-align:center;">
+                        <div style="color:#34d399;font-size:24px;font-weight:700;">{{ verification_summary.resolved_count }}</div>
+                        <div style="color:#a7f3d0;font-size:13px;font-weight:600;margin-top:2px;">Problem Appears Resolved</div>
+                    </div>
+
+                    <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:14px;text-align:center;">
+                        <div style="color:#f87171;font-size:24px;font-weight:700;">{{ verification_summary.exists_count }}</div>
+                        <div style="color:#fca5a5;font-size:13px;font-weight:600;margin-top:2px;">Problem Still Exists</div>
+                    </div>
+                </div>
+
+                <!-- Standardized Community Feedback Banner -->
+                <div style="background:{% if verification_summary.status_indicator == 'conflict' %}rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;{% elif verification_summary.status_indicator == 'positive' %}rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:#6ee7b7;{% elif verification_summary.status_indicator == 'negative' %}rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;{% else %}rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);color:var(--text-secondary);{% endif %}border-radius:10px;padding:12px 16px;font-size:14px;margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:18px;">
+                        {% if verification_summary.status_indicator == 'conflict' %}⚠️{% elif verification_summary.status_indicator == 'positive' %}✓{% elif verification_summary.status_indicator == 'negative' %}❗{% else %}ℹ️{% endif %}
+                    </span>
+                    <span>{{ verification_summary.summary_message }}</span>
+                </div>
+
+                <!-- Student Observation Form / Closed Notice -->
+                {% if issue.status == 'closed' %}
+                <!-- ============================================================== -->
+                <!-- READ-ONLY STATE FOR OFFICIALLY CLOSED ISSUES                   -->
+                <!-- ============================================================== -->
+                <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:18px;margin-top:16px;">
+                    <!-- Official Closure Guidance Message -->
+                    <div style="background:rgba(16, 185, 129, 0.08);border:1px solid rgba(16, 185, 129, 0.25);border-radius:10px;padding:14px 18px;display:flex;align-items:flex-start;gap:12px;margin-bottom:{% if user_verification %}16px{% else %}0{% endif %};">
+                        <i class="fa-solid fa-lock" style="color:#10b981;font-size:20px;margin-top:2px;"></i>
+                        <div>
+                            <div style="color:#6ee7b7;font-weight:700;font-size:14px;">
+                                Officially Closed by University Administration
+                            </div>
+                            <div style="color:#cbd5e1;font-size:12.5px;margin-top:3px;">
+                                This issue has been verified and permanently resolved. If the problem persists or returns, submit a Reopen Request.
+                            </div>
+                            {% if issue.closure_reason %}
+                            <div style="color:#94a3b8;font-size:12.5px;margin-top:4px;">
+                                <strong>Closure Note:</strong> <em>"{{ issue.closure_reason }}"</em>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if user_verification %}
+                    <!-- Student's previous observation displayed in READ-ONLY mode (no radio, no textarea, no upload, no submit/update button) -->
+                    <div style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px 16px;">
+                        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
+                            Your Past Observation (Cycle #{{ user_verification.resolution_attempt }} • Read-only)
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                            <span style="font-size:13px;font-weight:700;color:{% if user_verification.verification_choice == 'appears_resolved' %}#34d399{% else %}#f87171{% endif %};">
+                                {% if user_verification.verification_choice == 'appears_resolved' %}✓ Problem Appears Resolved{% else %}✕ Problem Still Exists{% endif %}
+                            </span>
+                            <span style="color:var(--text-secondary);font-size:12px;">Submitted {{ user_verification.updated_at|timesince }} ago</span>
+                        </div>
+                        {% if user_verification.comment %}
+                        <div style="color:#f8fafc;font-size:13px;margin-top:8px;font-style:italic;background:rgba(255,255,255,0.02);padding:8px 12px;border-radius:6px;border-left:3px solid {% if user_verification.verification_choice == 'appears_resolved' %}#10b981{% else %}#ef4444{% endif %};">
+                            "{{ user_verification.comment }}"
+                        </div>
+                        {% endif %}
+                        {% if user_verification.image %}
+                        <div style="margin-top:10px;">
+                            <a href="{{ user_verification.image.url }}" target="_blank" style="display:inline-block;">
+                                <img src="{{ user_verification.image.url }}" alt="Evidence Photo" style="max-height:100px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);">
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% elif user.is_authenticated and not user.is_staff and not user.is_superuser %}
+                <!-- ============================================================== -->
+                <!-- ACTIVE OBSERVATION FORM (When Issue is NOT Closed)             -->
+                <!-- ============================================================== -->
+                <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:18px;margin-top:16px;">
+                    <h4 style="color:white;font-size:15px;margin:0 0 10px;">
+                        {% if user_verification %}Update Your Observation{% else %}Submit Your Resolution Observation{% endif %}
+                    </h4>
+                    <p style="color:var(--text-secondary);font-size:13px;margin-bottom:14px;">
+                        Observed this location in person? Share your observations to assist campus maintenance.
+                        <em>(Student observations do not directly close the issue)</em>
+                    </p>
+
+                    <form method="POST" action="{% url 'verify_resolution' issue.pk %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:12px;margin-bottom:14px;">
+                            <label class="choice-box resolved-choice">
+                                <input type="radio" name="verification_choice" value="appears_resolved" {% if user_verification and user_verification.verification_choice == 'appears_resolved' %}checked{% endif %} required>
+                                <div>
+                                    <strong style="color:#34d399;font-size:14px;display:block;">✓ Problem Appears Resolved</strong>
+                                    <span style="color:var(--text-secondary);font-size:12px;">Repairs working properly</span>
+                                </div>
+                            </label>
+
+                            <label class="choice-box still-choice">
+                                <input type="radio" name="verification_choice" value="still_exists" {% if user_verification and user_verification.verification_choice == 'still_exists' %}checked{% endif %} required>
+                                <div>
+                                    <strong style="color:#f87171;font-size:14px;display:block;">✕ Problem Still Exists</strong>
+                                    <span style="color:var(--text-secondary);font-size:12px;">Issue remains broken / unresolved</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:12px;">
+                            <textarea name="comment" rows="2" placeholder="Optional details (e.g. 'I visited today, AC is blowing cold air' or 'Still leaking water on floor')..." style="width:100%;font-size:13px;">{{ user_verification.comment|default:'' }}</textarea>
+                        </div>
+
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <label style="color:var(--text-secondary);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                                📷 Attach Photo Evidence (Optional)
+                                <input type="file" name="image" accept="image/*" style="font-size:12px;">
+                            </label>
+
+                            <button type="submit" class="btn btn-primary" style="padding:8px 20px;font-size:13px;">
+                                {% if user_verification %}Update Observation{% else %}Submit Observation{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                {% elif user.is_authenticated and user.is_staff or user.is_superuser %}
+                <div style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.25);border-radius:10px;padding:14px 18px;margin-top:16px;display:flex;align-items:center;gap:12px;">
+                    <i class="fa-solid fa-shield-halved" style="color:#60a5fa;font-size:20px;"></i>
+                    <div style="font-size:13px;color:#bfdbfe;">
+                        <strong>Staff & Admin Oversight:</strong> Community observations below provide real-time field feedback from students. Use the management console below to manage status transitions and official closure.
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Recent Student Observations List -->
+                {% if verification_summary.recent_verifications %}
+                <div style="margin-top:20px;">
+                    <div style="color:var(--text-secondary);font-size:13px;font-weight:600;margin-bottom:10px;">
+                        Student Observations in Current Cycle:
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        {% for v in verification_summary.recent_verifications %}
+                        <div style="background:rgba(0,0,0,0.25);border-radius:8px;padding:10px 14px;border:1px solid rgba(255,255,255,0.04);display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+                            <div>
+                                <span style="font-size:13px;font-weight:600;color:{% if v.verification_choice == 'appears_resolved' %}#34d399{% else %}#f87171{% endif %};">
+                                    {% if v.verification_choice == 'appears_resolved' %}✓ Appears Resolved{% else %}✕ Still Exists{% endif %}
+                                </span>
+                                <span style="color:var(--text-secondary);font-size:12px;margin-left:8px;">by {{ v.student.get_full_name|default:v.student.username }}</span>
+                                {% if v.comment %}
+                                <div style="color:white;font-size:13px;margin-top:4px;">"{{ v.comment }}"</div>
+                                {% endif %}
+                                {% if v.image %}
+                                <div style="margin-top:8px;">
+                                    <a href="{{ v.image.url }}" target="_blank">
+                                        <img src="{{ v.image.url }}" alt="Evidence Photo" style="max-height:80px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);">
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <span style="color:var(--text-secondary);font-size:11px;">{{ v.updated_at|timesince }} ago</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- ============================================================== -->
+            <!-- ISSUE STATUS AUDIT TIMELINE                                    -->
+            <!-- ============================================================== -->
+            <div style="margin-top:30px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:22px;">
+                <h3 style="color:white;margin:0 0 16px;font-size:18px;display:flex;align-items:center;gap:8px;">
+                    ⏱️ Official Status History & Timeline
+                </h3>
+                <div style="padding-left:6px;">
+                    {% for h in status_history %}
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;">
+                            <div>
+                                <strong style="color:white;font-size:14px;">
+                                    {% if not h.previous_status or 'initial' in h.reason|lower %}Initial Problem Report Submitted
+                                    {% elif h.new_status == 'submitted' %}Report Submitted
+                                    {% elif h.new_status == 'in_progress' %}Started Work (In Progress)
+                                    {% elif h.new_status == 'resolved' %}Marked Resolved by Department
+                                    {% elif h.new_status == 'closed' %}Officially Closed
+                                    {% else %}{{ h.new_status|title }}{% endif %}
+                                </strong>
+                                {% if h.changed_by %}
+                                <span style="color:var(--text-secondary);font-size:12px;"> • {{ h.changed_by.get_full_name|default:h.changed_by.username }}</span>
+                                {% endif %}
+                                {% if h.reason %}
+                                <div style="color:var(--text-secondary);font-size:13px;margin-top:3px;">
+                                    Note: <em>"{{ h.reason }}"</em>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <span style="color:var(--text-secondary);font-size:12px;">{{ h.created_at|date:"M d, Y H:i" }}</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p style="color:var(--text-secondary);font-size:13px;margin:0;">No official status updates logged yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- ============================================================== -->
+            <!-- REOPEN REQUEST (Students when problem returns)                 -->
+            <!-- ============================================================== -->
+            {% if issue.status == 'resolved' or issue.status == 'closed' %}
+            {% if user.is_authenticated and not user.is_staff and not user.is_superuser %}
+            <div style="margin-top:24px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px;">
+                <h4 style="color:white;font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:8px;">
+                    🔄 Has this problem returned or remained unresolved?
+                </h4>
+                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:12px;">
+                    If the problem is not actually fixed or has recurred, you can request an official reopening for department investigation.
+                </p>
+
+                {% if issue.reopen_requested %}
+                <div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:12px 16px;color:#fbbf24;font-size:13px;display:flex;align-items:center;gap:10px;">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <div>
+                        <strong>Reopen Request Pending:</strong> A request to reopen this issue is currently awaiting administrative or department staff review.
+                    </div>
+                </div>
+                {% else %}
+                <form method="POST" action="{% url 'request_reopen' issue.pk %}">
+                    {% csrf_token %}
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <input type="text" name="reopen_reason" placeholder="Explain why problem needs to be reopened..." required class="form-input" style="flex:1;min-width:240px;font-size:13px;">
+                        <button type="submit" class="btn btn-secondary" style="padding:8px 18px;font-size:13px;background:rgba(245,158,11,0.15);border-color:rgba(245,158,11,0.3);color:#fbbf24;">
+                            Request Reopen
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% endif %}
+
+            <!-- ============================================================== -->
+            <!-- ADMIN REWORK REQUEST ALERT BANNER                             -->
+            <!-- ============================================================== -->
+            {% if issue.latest_rework_history %}
+            <div style="margin-top:20px;padding:14px 18px;border-radius:10px;background:rgba(239,68,68,0.12);border-left:5px solid #ef4444;border-right:1px solid rgba(239,68,68,0.3);border-top:1px solid rgba(239,68,68,0.3);border-bottom:1px solid rgba(239,68,68,0.3);color:#fca5a5;display:flex;align-items:flex-start;gap:12px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;font-size:20px;margin-top:2px;"></i>
+                <div>
+                    <div style="font-weight:700;color:#ffffff;font-size:14px;">Administrator Rework Requested</div>
+                    <div style="color:#fecaca;font-size:13px;margin-top:3px;line-height:1.5;">
+                        {{ issue.latest_rework_history.reason }}
+                    </div>
+                    <div style="color:#94a3b8;font-size:11.5px;margin-top:4px;">
+                        Requested by {{ issue.latest_rework_history.changed_by.get_full_name|default:issue.latest_rework_history.changed_by.username }} ({{ issue.latest_rework_history.created_at|timesince }} ago)
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ============================================================== -->
+            <!-- AUTHORIZED UNIVERSITY STAFF / ADMIN CONTROL PANEL              -->
+            <!-- ============================================================== -->
+            <!-- ========================================================== -->
+            <!-- DEPARTMENT WORK COMPLETION REPORT (VISIBLE WHEN RESOLVED)    -->
+            <!-- ========================================================== -->
+            {% if issue.status == 'resolved' or issue.work_report_summary %}
+            <div style="margin-top:24px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.3);border-radius:14px;padding:22px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:10px;flex-wrap:wrap;gap:8px;">
+                    <h3 style="color:#6ee7b7;margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
+                        <i class="fa-solid fa-clipboard-check"></i>
+                        <span>Department Work Completion Report</span>
+                    </h3>
+                    <span style="font-size:12px;color:#94a3b8;">
+                        Submitted by: <strong style="color:#ffffff;">{% if issue.resolved_by %}{{ issue.resolved_by.get_full_name|default:issue.resolved_by.username }}{% else %}Department Staff{% endif %}</strong>
+                        {% if issue.resolved_at %} ({{ issue.resolved_at|timesince }} ago){% endif %}
+                    </span>
+                </div>
+
+                <div style="margin-bottom:14px;">
+                    <div style="font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Work Done / Repair Summary:</div>
+                    <div style="color:#ffffff;font-size:14px;line-height:1.6;background:rgba(0,0,0,0.25);padding:12px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.05);">
+                        {{ issue.work_report_summary|default:"Work finished by responsible department staff." }}
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:14px;">
+                    {% if issue.work_technician_name %}
+                    <div style="background:rgba(255,255,255,0.03);padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);">
+                        <div style="font-size:11.5px;color:#94a3b8;">Technician / Staff In-Charge</div>
+                        <div style="font-weight:600;color:#f1f5f9;font-size:13.5px;margin-top:2px;">
+                            👷 {{ issue.work_technician_name }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if issue.work_materials_used %}
+                    <div style="background:rgba(255,255,255,0.03);padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);">
+                        <div style="font-size:11.5px;color:#94a3b8;">Materials / Parts Replaced</div>
+                        <div style="font-weight:600;color:#f1f5f9;font-size:13.5px;margin-top:2px;">
+                            🔧 {{ issue.work_materials_used }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if issue.work_completion_image %}
+                <div style="margin-bottom:16px;">
+                    <div style="font-size:12px;color:#94a3b8;font-weight:600;margin-bottom:6px;">Work Proof / Completion Image:</div>
+                    <a href="{{ issue.work_completion_image.url }}" target="_blank">
+                        <img src="{{ issue.work_completion_image.url }}" alt="Work Completion Proof" style="max-width:280px;max-height:200px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);object-fit:cover;">
+                    </a>
+                </div>
+                {% endif %}
+
+                <!-- ADMIN DECISION PANEL BASED ON WORK REPORT -->
+                {% if user.is_superuser and issue.status == 'resolved' %}
+                <div style="background:linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(15,23,42,0.7) 100%);border:1px solid rgba(16,185,129,0.4);border-radius:12px;padding:18px 20px;margin-top:18px;box-shadow:0 4px 16px rgba(0,0,0,0.25);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+                        <div style="font-size:14px;font-weight:700;color:#ffffff;display:flex;align-items:center;gap:8px;">
+                            <i class="fa-solid fa-gavel" style="color:#fbbf24;"></i> Administrator Final Review &amp; Official Decision
+                        </div>
+                        <span style="font-size:11.5px;padding:3px 10px;border-radius:20px;background:rgba(16,185,129,0.2);color:#6ee7b7;font-weight:600;border:1px solid rgba(16,185,129,0.35);">
+                            Awaiting Admin Review
+                        </span>
+                    </div>
+                    <p style="font-size:12.5px;color:#94a3b8;margin:0 0 14px;line-height:1.5;">
+                        The department has completed their repair work. Review their report above and choose to officially approve &amp; close this issue or send it back for rework.
+                    </p>
+
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;">
+                        <!-- APPROVE & CLOSE (1-CLICK DIRECT ACTION) -->
+                        <form method="POST" action="{% url 'close_issue' issue.pk %}" style="margin:0;display:inline-flex;flex-shrink:0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="closure_reason" value="Verified department completion report and officially closed.">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn btn-secondary" style="background:#059669;border:1px solid #10b981;color:#ffffff;font-weight:700;padding:10px 22px;font-size:13.5px;white-space:nowrap;cursor:pointer;border-radius:8px;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 10px rgba(5,150,105,0.35);transition:all 0.2s;" onmouseover="this.style.background='#047857'" onmouseout="this.style.background='#059669'">
+                                <i class="fa-solid fa-check-double"></i> Approve &amp; Officially Close
+                            </button>
+                        </form>
+
+                        <!-- REWORK REASON INPUT + SEND FOR REWORK -->
+                        <form method="POST" action="{% url 'request_rework' issue.pk %}" style="display:flex;gap:8px;align-items:center;flex:1;min-width:280px;margin:0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <input type="text" name="rework_reason" placeholder="Rework Reason: Explain what department needs to fix..." class="form-input" style="flex:1;min-width:180px;padding:9.5px 14px;font-size:13px;background:#090d16;border:1px solid rgba(239,68,68,0.45);border-radius:8px;color:#ffffff;box-sizing:border-box;" required>
+                            <button type="submit" class="btn btn-secondary" style="background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.5);color:#fca5a5;font-weight:700;padding:9.5px 18px;font-size:13px;white-space:nowrap;cursor:pointer;border-radius:8px;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.3)'" onmouseout="this.style.background='rgba(239,68,68,0.18)'">
+                                <i class="fa-solid fa-rotate-left"></i> Send for Rework
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% elif not user.is_superuser and issue.status == 'resolved' %}
+                <div style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:8px;padding:12px 14px;margin-top:12px;font-size:13px;color:#93c5fd;display:flex;align-items:center;gap:8px;">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Work completion report submitted! Final closure will be performed by University Administration after reviewing your report.</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if can_manage or is_authorized_staff or user.is_staff or user.is_superuser %}
+            <div style="margin-top:28px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.3);border-radius:14px;padding:22px;">
+                <h3 style="color:#93c5fd;margin:0 0 14px;font-size:17px;display:flex;align-items:center;gap:8px;">
+                    {% if user.is_superuser %}
+                    <i class="fa-solid fa-shield-halved" style="color:#60a5fa;"></i> University Administration &amp; Department Management
+                    {% else %}
+                    <i class="fa-solid fa-screwdriver-wrench" style="color:#60a5fa;"></i> Department Staff Operational Controls
+                    {% endif %}
+                </h3>
+
+                <!-- ADMIN EXECUTIVE PRIORITY ESCALATION -->
+                {% if user.is_superuser %}
+                <div style="background:{% if issue.priority == 'urgent' %}rgba(220,38,38,0.18){% else %}rgba(239,68,68,0.08){% endif %};border:1.5px solid {% if issue.priority == 'urgent' %}#ef4444{% else %}rgba(239,68,68,0.35){% endif %};border-radius:10px;padding:14px 16px;margin-bottom:18px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                        <div>
+                            <div style="font-size:13.5px;font-weight:700;color:{% if issue.priority == 'urgent' %}#fca5a5{% else %}#ffffff{% endif %};display:flex;align-items:center;gap:6px;">
+                                <span>🚨</span> Admin Executive Priority Escalation
+                                {% if issue.priority == 'urgent' %}
+                                <span style="background:#dc2626;color:#ffffff;font-size:11px;padding:2px 8px;border-radius:12px;font-weight:800;letter-spacing:0.04em;">CURRENTLY URGENT</span>
+                                {% endif %}
+                            </div>
+                            <div style="font-size:12px;color:#cbd5e1;margin-top:3px;">
+                                {% if issue.priority == 'urgent' %}
+                                This issue is currently escalated as Urgent. It is pinned at the top of the department's work queue.
+                                {% else %}
+                                Escalate this problem to Urgent so department staff must drop all other tasks and resolve it immediately.
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                            <form method="POST" action="{% url 'problem_change_priority' issue.pk %}" style="display:inline-flex;align-items:center;gap:8px;">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <select name="priority" onchange="this.form.submit()" title="Directly set priority level" style="padding:7px 12px;font-size:12.5px;background:#1c1917;color:{% if issue.priority == 'urgent' %}#fca5a5{% elif issue.priority == 'high' %}#fdba74{% else %}#ffffff{% endif %};border:1px solid {% if issue.priority == 'urgent' %}#ef4444{% elif issue.priority == 'high' %}rgba(249,115,22,0.5){% else %}rgba(255,255,255,0.25){% endif %};border-radius:6px;cursor:pointer;font-weight:700;">
+                                    <option value="urgent" {% if issue.priority == 'urgent' %}selected{% endif %}>🚨 Urgent</option>
+                                    <option value="high" {% if issue.priority == 'high' %}selected{% endif %}>🔥 High Priority</option>
+                                    <option value="medium" {% if issue.priority == 'medium' %}selected{% endif %}>⚡ Medium Priority</option>
+                                    <option value="low" {% if issue.priority == 'low' %}selected{% endif %}>🟢 Low Priority</option>
+                                </select>
+                            </form>
+
+                            <form method="POST" action="{% url 'admin_toggle_urgent' issue.pk %}" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                {% if issue.priority == 'urgent' %}
+                                <button type="submit" name="action" value="demote" class="btn" style="background:rgba(255,255,255,0.1);color:#ffffff;border:1px solid rgba(255,255,255,0.25);font-size:12.5px;font-weight:600;padding:7px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                                    <i class="fa-solid fa-arrow-down"></i> Revoke Urgent
+                                </button>
+                                {% else %}
+                                <button type="submit" name="action" value="escalate" class="btn btn-danger" style="background:#dc2626;color:#ffffff;border:1px solid #ef4444;font-size:13px;font-weight:700;padding:7px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 12px rgba(220,38,38,0.5);">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> 🚨 Quick Escalate to Urgent
+                                </button>
+                                {% endif %}
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Manual Department Routing & Assignment -->
+                {% if user.is_superuser or user.is_staff %}
+                <form method="POST" action="{% url 'admin_assign_issue' %}" style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 16px;margin-bottom:18px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="issue_id" value="{{ issue.id }}">
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <div style="font-size:13px;font-weight:600;color:#ffffff;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                        <i class="fa-solid fa-building-user" style="color:#60a5fa;"></i> Shift / Reassign Operational Department
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                        <select name="department_id" class="form-select" style="flex:1;min-width:200px;padding:8px 12px;font-size:13px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;">
+                            <option value="">-- No Department (Unassigned) --</option>
+                            {% for d in all_departments %}
+                            <option value="{{ d.id }}" {% if issue.department_id == d.id %}selected{% endif %}>{{ d.name }} [{{ d.code }}]</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap;">
+                            <i class="fa-solid fa-arrow-right-arrow-left"></i> Shift Department
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+
+                <!-- Admin Official Directive / Quick Remark Form -->
+                {% if user.is_superuser %}
+                <form method="POST" action="{% url 'add_comment' issue.pk %}" style="background:rgba(0,0,0,0.35);border:1px solid rgba(59,130,246,0.25);border-radius:10px;padding:14px 16px;margin-bottom:18px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}#comments">
+                    <div style="font-size:13px;font-weight:700;color:#93c5fd;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                        <i class="fa-solid fa-bullhorn" style="color:#60a5fa;"></i> Post Official Admin Directive / Remark
+                    </div>
+                    <div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">
+                        Broadcast an executive directive or instruction to department staff and the reporter. This will be recorded in the official audit history and displayed in the discussion below.
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                        <input type="text" name="content" placeholder="e.g. Facilities team: please inspect and replace damaged components today..." class="form-input" style="flex:1;min-width:240px;padding:9px 14px;font-size:13px;background:#090d16;border:1px solid rgba(59,130,246,0.35);border-radius:8px;color:#ffffff;box-sizing:border-box;" required>
+                        <button type="submit" class="btn btn-primary" style="padding:9px 20px;font-size:13px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 10px rgba(59,130,246,0.3);">
+                            <i class="fa-solid fa-paper-plane"></i> Post Directive
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+
+                <!-- ============================================================== -->
+                <!-- WORKFLOW STATUS & ACTIONS (ADMIN MONITOR VS STAFF ACTIONS)      -->
+                <!-- ============================================================== -->
+
+                <!-- 1. ADMIN OPERATIONAL WORKFLOW MONITOR (SUPERUSER ONLY) -->
+                {% if user.is_superuser %}
+                    {% if issue.status == 'submitted' %}
+                    <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:16px;margin-bottom:18px;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">⏳</span>
+                            <div>
+                                <div style="font-weight:700;color:#93c5fd;font-size:14.5px;">Awaiting Department Acceptance</div>
+                                <div style="color:#cbd5e1;font-size:12.5px;margin-top:2px;">
+                                    This issue has been routed to <strong>{{ issue.department.name|default:"Unassigned Department" }}</strong>. Staff from this department will review and accept this task to begin repair work.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% elif issue.status == 'in_progress' %}
+                    <div style="background:linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(15,23,42,0.6) 100%);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:18px 20px;margin-bottom:18px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:gap:8px;">
+                            <div style="font-size:14.5px;font-weight:700;color:#fbbf24;display:flex;align-items:center;gap:8px;">
+                                <i class="fa-solid fa-screwdriver-wrench"></i> Department Repair Work In Progress
+                            </div>
+                            <span style="font-size:11.5px;padding:3px 10px;border-radius:20px;background:rgba(245,158,11,0.18);color:#fcd34d;font-weight:600;border:1px solid rgba(245,158,11,0.35);">
+                                Department: {{ issue.department.name|default:"General Maintenance" }}
+                            </span>
+                        </div>
+                        <p style="font-size:13px;color:#cbd5e1;margin:0 0 10px;line-height:1.5;">
+                            Operational department staff is actively executing repairs on this issue. Once repairs are completed on-site, the department staff will submit the official <strong>Work Completion Report</strong>.
+                        </p>
+                        <div style="font-size:12px;color:#94a3b8;background:rgba(0,0,0,0.25);border-radius:8px;padding:10px 14px;border:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:8px;">
+                            <i class="fa-solid fa-circle-info" style="color:#60a5fa;"></i>
+                            <span>Administrative action is not required right now. When the staff submits their report, the issue will move to <strong>Resolved</strong> status so you can review their work and choose to <strong>Approve &amp; Close</strong> or <strong>Send for Rework</strong>.</span>
+                        </div>
+                    </div>
+                    {% elif issue.status == 'resolved' %}
+                    <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:16px;margin-bottom:18px;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">📋</span>
+                            <div>
+                                <div style="font-weight:700;color:#6ee7b7;font-size:14.5px;">Department Report Ready for Review</div>
+                                <div style="color:#cbd5e1;font-size:12.5px;margin-top:2px;">
+                                    The department has completed work and submitted their repair report. Please review the <strong>Department Work Completion Report</strong> above to <strong>Approve &amp; Officially Close</strong> or <strong>Send for Rework</strong>.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% elif issue.status == 'closed' %}
+                    <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:14px;margin-bottom:18px;">
+                        <div style="color:#6ee7b7;font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:8px;">
+                            <i class="fa-solid fa-circle-check"></i> Officially Closed by University Administration
+                        </div>
+                        <div style="color:#94a3b8;font-size:12px;margin-top:4px;">
+                            Closure Reason: {{ issue.closure_reason|default:"Verified department completion report and officially closed." }}
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+                <!-- 2. DEPARTMENT STAFF OPERATIONAL WORKFLOW ACTIONS (ONLY VISIBLE TO STAFF, NOT ADMIN) -->
+                {% if not user.is_superuser and is_authorized_staff %}
+                    <!-- QUICK WORKFLOW ACTION: ACCEPT TASK IF SUBMITTED -->
+                    {% if issue.status == 'submitted' %}
+                    <div style="background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.3);border-radius:10px;padding:16px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                        <div>
+                            <div style="font-weight:700;color:#ffffff;font-size:14px;">Incoming Task Awaiting Acceptance</div>
+                            <div style="color:#94a3b8;font-size:12.5px;margin-top:2px;">Accept this report to assign it to your work queue and mark status as In Progress.</div>
+                        </div>
+                        <form method="POST" action="{% url 'update_issue_status' issue.pk %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="in_progress">
+                            <input type="hidden" name="reason" value="Accepted by department staff / repair work started.">
+                            <button type="submit" class="btn btn-primary" style="background:#2563eb;padding:9px 20px;font-size:13.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+                                <i class="fa-solid fa-play"></i> Accept Task & Start Work
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    <!-- QUICK WORKFLOW ACTION: SUBMIT WORK COMPLETION REPORT IF IN_PROGRESS -->
+                    {% if issue.status == 'in_progress' %}
+                    <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:18px;margin-bottom:18px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <div>
+                                <div style="font-weight:700;color:#a7f3d0;font-size:14.5px;display:flex;align-items:center;gap:6px;">
+                                    <i class="fa-solid fa-wrench"></i> Submit Work Completion Report
+                                </div>
+                                <div style="color:#94a3b8;font-size:12.5px;margin-top:2px;">
+                                    When repairs are done, provide details below. The administrator will review and close the issue based on your report.
+                                </div>
+                            </div>
+                        </div>
+
+                        <form method="POST" action="{% url 'submit_work_report' issue.pk %}" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block;font-size:12.5px;font-weight:600;color:#ffffff;margin-bottom:4px;">
+                                    Detailed Work / Repair Summary <span style="color:#ef4444;">*</span>
+                                </label>
+                                <textarea name="work_report_summary" rows="3" placeholder="Describe the repairs performed (e.g. Replaced 40W bulb, re-soldered connection, checked power load)..." class="form-textarea" required style="width:100%;box-sizing:border-box;padding:8px 12px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;"></textarea>
+                            </div>
+
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                                <div>
+                                    <label style="display:block;font-size:12.5px;font-weight:600;color:#ffffff;margin-bottom:4px;">
+                                        Technician / Staff Name
+                                    </label>
+                                    <input type="text" name="work_technician_name" placeholder="e.g. Md. Jamal (Senior Electrician)" value="{{ user.get_full_name|default:user.username }}" class="form-input" style="width:100%;box-sizing:border-box;padding:8px 12px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                                </div>
+                                <div>
+                                    <label style="display:block;font-size:12.5px;font-weight:600;color:#ffffff;margin-bottom:4px;">
+                                        Materials / Parts Replaced
+                                    </label>
+                                    <input type="text" name="work_materials_used" placeholder="e.g. 1x LED Tube, 1x Switch Socket" class="form-input" style="width:100%;box-sizing:border-box;padding:8px 12px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:13px;">
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom:16px;">
+                                <label style="display:block;font-size:12.5px;font-weight:600;color:#ffffff;margin-bottom:4px;">
+                                    Completion Evidence Photo (Optional)
+                                </label>
+                                <input type="file" name="work_completion_image" accept="image/*" class="form-input" style="padding:6px 12px;font-size:12px;">
+                            </div>
+
+                            <button type="submit" class="btn btn-secondary" style="background:#059669;border-color:#10b981;color:#ffffff;font-weight:600;padding:9px 22px;font-size:13.5px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                                <i class="fa-solid fa-paper-plane"></i> Submit Report & Mark Work Done
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Work Progress Log Note (Only for Staff when In Progress) -->
+                    <form method="POST" action="{% url 'update_issue_status' issue.pk %}" style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px 16px;margin-bottom:14px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="in_progress">
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <div style="font-size:13px;font-weight:600;color:#ffffff;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                            <i class="fa-solid fa-note-sticky" style="color:#60a5fa;"></i> Log Work Progress Note
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                            <input type="text" name="reason" placeholder="e.g. Parts ordered from vendor, technician on site..." class="form-input" style="flex:1;min-width:200px;font-size:13px;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:8px 12px;" required>
+                            <button type="submit" class="btn btn-secondary" style="padding:8px 18px;font-size:13px;white-space:nowrap;cursor:pointer;">
+                                Add Progress Note
+                            </button>
+                        </div>
+                        <div style="font-size:11.5px;color:#94a3b8;margin-top:6px;">
+                            Note: When repairs are completed, submit the <strong>Work Completion Report</strong> above to mark as Resolved.
+                        </div>
+                    </form>
+                    {% endif %}
+                {% endif %}
+
+                <!-- Reopen Request Review Action -->
+                {% if issue.reopen_requested %}
+                <div style="background:rgba(0,0,0,0.3);border-radius:10px;padding:14px;margin-bottom:18px;border:1px solid rgba(245,158,11,0.3);">
+                    <div style="color:#fbbf24;font-weight:700;font-size:14px;margin-bottom:6px;">
+                        Action Required: Student Reopen Request
+                    </div>
+                    <p style="color:white;font-size:13px;margin-bottom:10px;">
+                        Reason: <em>"{{ issue.reopen_reason }}"</em>
+                    </p>
+                    <div style="margin-bottom:10px;">
+                        <input type="text" name="review_notes" id="reopen_review_notes" placeholder="Optional review notes or reason for decision..." class="form-input" style="font-size:12px;padding:6px 10px;">
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                        <form method="POST" action="{% url 'review_reopen' issue.pk %}" style="display:inline;" onsubmit="this.appendChild(document.getElementById('reopen_review_notes').cloneNode(true));">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="approve">
+                            <button type="submit" class="btn btn-primary" style="padding:6px 16px;font-size:13px;">
+                                ✓ Approve & Reopen for Repair
+                            </button>
+                        </form>
+                        <form method="POST" action="{% url 'review_reopen' issue.pk %}" style="display:inline;" onsubmit="this.appendChild(document.getElementById('reopen_review_notes').cloneNode(true));">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="reject">
+                            <button type="submit" class="btn btn-secondary" style="padding:6px 16px;font-size:13px;">
+                                ✕ Dismiss Request
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Reopen Request History -->
+                {% if reopen_requests %}
+                <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px;margin-bottom:18px;border:1px solid rgba(255,255,255,0.08);">
+                    <div style="color:#fbbf24;font-weight:700;font-size:13px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+                        📋 Reopen Request History ({{ reopen_requests.count }})
+                    </div>
+                    {% for req in reopen_requests %}
+                    <div style="background:rgba(255,255,255,0.02);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid {% if req.decision == 'approved' %}#10b981{% elif req.decision == 'rejected' %}#ef4444{% else %}#f59e0b{% endif %};">
+                        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+                            <span style="font-weight:600;color:white;">Requested by {{ req.requester.get_full_name|default:req.requester.username }}</span>
+                            <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;{% if req.decision == 'approved' %}background:rgba(16,185,129,0.2);color:#34d399;{% elif req.decision == 'rejected' %}background:rgba(239,68,68,0.2);color:#f87171;{% else %}background:rgba(245,158,11,0.2);color:#fbbf24;{% endif %}">
+                                {{ req.get_decision_display }}
+                            </span>
+                        </div>
+                        <div style="color:var(--text-secondary);font-size:12px;margin-top:4px;">
+                            <strong>Reason:</strong> <em>"{{ req.reason }}"</em>
+                        </div>
+                        {% if req.reviewer %}
+                        <div style="color:#93c5fd;font-size:12px;margin-top:4px;">
+                            <strong>Reviewed by:</strong> {{ req.reviewer.get_full_name|default:req.reviewer.username }} ({{ req.reviewed_at|timesince }} ago)
+                            {% if req.review_notes %} — <em>"{{ req.review_notes }}"</em>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+
+            </div>
+            {% endif %}
+
+            {% if issue.latitude and issue.longitude or issue.room or issue.landmark %}
+            <div style="margin-top:24px;border-radius:12px;padding:16px 20px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:40px;height:40px;border-radius:10px;background:rgba(59,130,246,0.15);display:flex;align-items:center;justify-content:center;color:#60a5fa;font-size:18px;">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:600;color:white;font-size:14px;">Campus Location Verification</div>
+                        <div style="color:var(--text-secondary);font-size:13px;margin-top:2px;">
+                            {{ issue.get_location_display }}
+                        </div>
+                    </div>
+                </div>
+                {% if issue.latitude and issue.longitude %}
+                <div style="font-size:12px;color:var(--text-secondary);background:rgba(255,255,255,0.05);padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:6px;">
+                    <i class="fa-solid fa-satellite" style="color:#60a5fa;"></i>
+                    <span>GPS: {{ issue.latitude|floatformat:5 }}, {{ issue.longitude|floatformat:5 }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- COMMENTS SECTION (2-Way Communication) -->
+            <div id="comments" style="margin-top:36px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.08);scroll-margin-top:80px;">
+                <h3 style="color:white;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                    💬 Updates &amp; Discussion ({{ comments.count }})
+                </h3>
+
+                <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+                    {% for c in comments %}
+                    <div style="background:{% if c.user.is_superuser %}rgba(37,99,235,0.08){% elif c.user.is_staff %}rgba(245,158,11,0.06){% else %}rgba(255,255,255,0.03){% endif %};border:1px solid {% if c.user.is_superuser %}rgba(59,130,246,0.4){% elif c.user.is_staff %}rgba(245,158,11,0.25){% else %}rgba(255,255,255,0.06){% endif %};border-radius:12px;padding:14px 18px;{% if c.user.is_superuser %}box-shadow:0 0 16px rgba(37,99,235,0.12);{% endif %}">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                <span style="color:white;font-weight:700;font-size:14px;">{{ c.user.get_full_name|default:c.user.username }}</span>
+                                {% if c.user.is_superuser %}
+                                <span style="background:linear-gradient(135deg, #2563eb, #1d4ed8);color:#ffffff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;box-shadow:0 1px 4px rgba(37,99,235,0.4);">
+                                    <i class="fa-solid fa-shield-halved"></i> University Administration (Official)
+                                </span>
+                                {% elif c.user.is_staff %}
+                                <span style="background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid rgba(245,158,11,0.4);font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                                    <i class="fa-solid fa-screwdriver-wrench"></i> Department Staff
+                                </span>
+                                {% elif c.user == issue.reporter %}
+                                <span style="background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3);font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                                    <i class="fa-solid fa-user-check"></i> Reporter
+                                </span>
+                                {% endif %}
+                            </div>
+                            <span style="color:var(--text-secondary);font-size:12px;">{{ c.created_at|timesince }} ago</span>
+                        </div>
+                        <p style="color:{% if c.user.is_superuser %}#f1f5f9{% else %}var(--text-secondary){% endif %};font-size:14px;line-height:1.6;margin:0;white-space:pre-wrap;">{{ c.content }}</p>
+                    </div>
+                    {% empty %}
+                    <p style="color:var(--text-secondary);font-size:14px;padding:8px 0;">No comments yet. Have an update regarding this issue?</p>
+                    {% endfor %}
+                </div>
+
+                {% if user.is_authenticated %}
+                <form method="POST" action="{% url 'add_comment' issue.pk %}" style="margin-top:16px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}#comments">
+                    <div class="form-group" style="margin-bottom:12px;">
+                        {% if user.is_superuser %}
+                        <label style="display:block;font-size:13px;font-weight:700;color:#93c5fd;margin-bottom:6px;">
+                            <i class="fa-solid fa-shield-halved"></i> University Administration Directive / Remark
+                        </label>
+                        <textarea name="content" rows="3" placeholder="Post an official administrative directive or instruction for department staff and students..." required style="width:100%;box-sizing:border-box;background:#090d16;color:#ffffff;border:1.5px solid rgba(59,130,246,0.4);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.5;"></textarea>
+                        {% elif user.is_staff %}
+                        <label style="display:block;font-size:13px;font-weight:700;color:#fcd34d;margin-bottom:6px;">
+                            <i class="fa-solid fa-screwdriver-wrench"></i> Department Staff Operational Remark
+                        </label>
+                        <textarea name="content" rows="3" placeholder="Write a staff update (e.g. Technician arrived, parts inspected, repair status)..." required style="width:100%;box-sizing:border-box;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.5;"></textarea>
+                        {% else %}
+                        <textarea name="content" rows="3" placeholder="Write an update or remark regarding this issue..." required style="width:100%;box-sizing:border-box;background:#1c1917;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.5;"></textarea>
+                        {% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="padding:10px 22px;font-size:14px;display:inline-flex;align-items:center;gap:8px;">
+                        {% if user.is_superuser %}
+                        <i class="fa-solid fa-shield-halved"></i> Post Official Admin Directive
+                        {% elif user.is_staff %}
+                        <i class="fa-solid fa-wrench"></i> Post Staff Remark
+                        {% else %}
+                        <i class="fa-solid fa-paper-plane"></i> Post Comment
+                        {% endif %}
+                    </button>
+                </form>
+                {% else %}
+                <p style="color:var(--text-secondary);font-size:13px;margin-top:12px;">
+                    <a href="{% url 'login' %}?next={% url 'problem_detail' issue.pk %}" style="color:var(--purple);">Login</a> to participate in discussions.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleVote() {
+    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    var btn = document.getElementById('voteBtn');
+    var voteText = document.getElementById('voteText');
+    var voteCount = document.getElementById('voteCount');
+
+    fetch("{% url 'problem_support' issue.pk %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": csrfToken,
+            "X-Requested-With": "XMLHttpRequest",
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.voted) {
+            btn.className = "btn btn-primary";
+            voteText.textContent = "Supported";
+        } else {
+            btn.className = "btn btn-secondary";
+            voteText.textContent = "Support Problem";
+        }
+        voteCount.textContent = data.count;
+    })
+    .catch(err => {
+        console.error("Support error:", err);
+    });
+}
+</script>
+{% endblock %}
