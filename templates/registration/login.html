@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+{% block title %}Sign In - University Problem Reporting System (UPRS){% endblock %}
+
+{% block extra_head %}
+<style>
+.role-tabs {
+    display: flex;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 6px;
+    margin-bottom: 24px;
+}
+.role-tab-btn {
+    flex: 1;
+    padding: 10px 14px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.role-tab-btn.active.student {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    box-shadow: 0 2px 10px rgba(59, 130, 246, 0.2);
+}
+.role-tab-btn.active.admin {
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    box-shadow: 0 2px 10px rgba(168, 85, 247, 0.2);
+}
+.login-header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+.badge-student {
+    background: rgba(59, 130, 246, 0.15);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.badge-admin {
+    background: rgba(168, 85, 247, 0.15);
+    color: #d8b4fe;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+.role-notice {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    margin-bottom: 18px;
+    line-height: 1.5;
+}
+.notice-student {
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    color: #bfdbfe;
+}
+.notice-admin {
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    color: #fde68a;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="section" style="max-width:480px;margin:50px auto;padding:0 20px;">
+    <div class="form-container" style="padding:36px 32px;background:rgba(20, 20, 24, 0.85);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08);border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+        
+        <!-- ROLE SELECTOR TABS -->
+        <div class="role-tabs">
+            <button type="button" class="role-tab-btn student {% if selected_role != 'admin' %}active{% endif %}" id="tabStudentBtn" onclick="selectLoginRole('student')">
+                <span>🎓</span> Student Login
+            </button>
+            <button type="button" class="role-tab-btn admin {% if selected_role == 'admin' %}active{% endif %}" id="tabAdminBtn" onclick="selectLoginRole('admin')">
+                <span>🛡️</span> Official / Admin
+            </button>
+        </div>
+
+        <!-- HEADER -->
+        <div style="text-align:center;margin-bottom:20px;">
+            <div id="roleBadge" class="login-header-badge {% if selected_role == 'admin' %}badge-admin{% else %}badge-student{% endif %}">
+                <span id="roleBadgeText">{% if selected_role == 'admin' %}🛡️ University Administration{% else %}🎓 Student Portal{% endif %}</span>
+            </div>
+            <h1 id="loginTitle" style="color:white;font-size:26px;font-weight:700;margin:0 0 6px;">
+                {% if selected_role == 'admin' %}Admin & Staff Portal{% else %}Student Sign In{% endif %}
+            </h1>
+            <p id="loginSubtitle" style="color:var(--text-secondary);font-size:13px;margin:0;">
+                {% if selected_role == 'admin' %}
+                Sign in to manage reports, repair workflows, and university closures
+                {% else %}
+                Sign in to report campus problems and track repair progress
+                {% endif %}
+            </p>
+        </div>
+        <!-- ROLE SECURITY NOTICE -->
+        <div id="roleNotice" class="role-notice {% if selected_role == 'admin' %}notice-admin{% else %}notice-student{% endif %}">
+            <span id="roleNoticeText">
+                {% if selected_role == 'admin' %}
+                🔒 <strong>Restricted Access:</strong> Only registered department staff and university administrators can log in here. Student accounts will be denied.
+                {% else %}
+                ℹ️ <strong>Students:</strong> Sign in with your university student ID or registered username.
+                {% endif %}
+            </span>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <form method="POST" action="{% url 'login' %}">
+            {% csrf_token %}
+            <!-- Hidden role inputs -->
+            <input type="hidden" name="login_role" id="loginRoleInput" value="{{ selected_role|default:'student' }}">
+            <input type="hidden" name="role" id="loginRoleInputRole" value="{{ selected_role|default:'student' }}">
+
+            <div class="form-group" style="margin-bottom:18px;">
+                <label id="usernameLabel" style="font-size:13px;font-weight:600;color:white;display:block;margin-bottom:8px;">
+                    {% if selected_role == 'admin' %}Administrative ID / Username{% else %}Student ID / Username{% endif %}
+                </label>
+                <input type="text" name="username" id="usernameInput" value="{{ username_val|default:'' }}" placeholder="{% if selected_role == 'admin' %}e.g. admin or staff ID{% else %}e.g. student or your Student ID{% endif %}" required autofocus class="form-input" style="font-size:14px;padding:12px 14px;">
+            </div>
+
+            <div class="form-group" style="margin-bottom:22px;">
+                <label style="font-size:13px;font-weight:600;color:white;display:block;margin-bottom:8px;">Password</label>
+                <div style="position:relative;display:flex;align-items:center;">
+                    <input type="password" name="password" id="passwordInput" placeholder="Enter your password" required class="form-input" style="font-size:14px;padding:12px 44px 12px 14px;width:100%;">
+                    <button type="button" onclick="togglePasswordVisibility('passwordInput', 'togglePasswordIcon')" style="position:absolute;right:8px;background:none;border:none;color:#94a3b8;cursor:pointer;padding:6px 8px;font-size:16px;display:flex;align-items:center;justify-content:center;transition:color 0.15s ease;" title="Show/Hide Password" aria-label="Toggle password visibility">
+                        <i class="fa-solid fa-eye" id="togglePasswordIcon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn" class="btn-submit" style="width:100%;padding:12px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;{% if selected_role == 'admin' %}background:linear-gradient(135deg, #7c3aed, #2563eb);border-color:#7c3aed;{% endif %}">
+                <span id="submitBtnText">
+                    {% if selected_role == 'admin' %}Sign In to Admin Portal 🛡️{% else %}Sign In as Student →{% endif %}
+                </span>
+            </button>
+        </form>
+
+        <!-- REGISTER LINK (Visible only for student mode) -->
+        <div id="studentRegisterBox" style="text-align:center;margin-top:20px;border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;display:{% if selected_role == 'admin' %}none{% else %}block{% endif %};">
+            <p style="color:var(--text-secondary);font-size:13px;margin:0;">
+                Don't have a student account? <a href="{% url 'register' %}" style="color:#60a5fa;font-weight:600;text-decoration:none;">Register here</a>
+            </p>
+        </div>
+
+        <!-- ADMIN HELP BOX (Visible only for admin mode) -->
+        <div id="adminHelpBox" style="text-align:center;margin-top:20px;border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;display:{% if selected_role == 'admin' %}block{% else %}none{% endif %};">
+            <p style="color:var(--text-secondary);font-size:12px;margin:0;">
+                🔒 Official and department accounts are issued by the University System Administrator.
+            </p>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function selectLoginRole(role) {
+    document.getElementById('loginRoleInput').value = role;
+    var roleInputRole = document.getElementById('loginRoleInputRole');
+    if (roleInputRole) roleInputRole.value = role;
+
+    var tabStudent = document.getElementById('tabStudentBtn');
+    var tabAdmin = document.getElementById('tabAdminBtn');
+    var roleBadge = document.getElementById('roleBadge');
+    var roleBadgeText = document.getElementById('roleBadgeText');
+    var loginTitle = document.getElementById('loginTitle');
+    var loginSubtitle = document.getElementById('loginSubtitle');
+    var roleNotice = document.getElementById('roleNotice');
+    var roleNoticeText = document.getElementById('roleNoticeText');
+    var usernameLabel = document.getElementById('usernameLabel');
+    var usernameInput = document.getElementById('usernameInput');
+    var submitBtn = document.getElementById('submitBtn');
+    var submitBtnText = document.getElementById('submitBtnText');
+    var studentRegisterBox = document.getElementById('studentRegisterBox');
+    var adminHelpBox = document.getElementById('adminHelpBox');
+
+    if (role === 'admin') {
+        tabAdmin.classList.add('active');
+        tabStudent.classList.remove('active');
+
+        roleBadge.className = 'login-header-badge badge-admin';
+        roleBadgeText.textContent = '🛡️ University Administration & Staff';
+
+        loginTitle.textContent = 'Admin & Staff Portal';
+        loginSubtitle.textContent = 'Sign in to manage reports, repair workflows, and university closures';
+
+        roleNotice.className = 'role-notice notice-admin';
+        roleNoticeText.innerHTML = '🔒 <strong>Restricted Access:</strong> Only registered department staff and university administrators can log in here.';
+
+        usernameLabel.textContent = 'Administrative ID / Username';
+        usernameInput.placeholder = 'e.g. staff_san, mainstuff, or admin';
+
+        submitBtn.style.background = 'linear-gradient(135deg, #7c3aed, #2563eb)';
+        submitBtn.style.borderColor = '#7c3aed';
+        submitBtnText.textContent = 'Sign In to Admin / Staff Portal 🛡️';
+
+        studentRegisterBox.style.display = 'none';
+        adminHelpBox.style.display = 'block';
+    } else {
+        tabStudent.classList.add('active');
+        tabAdmin.classList.remove('active');
+
+        roleBadge.className = 'login-header-badge badge-student';
+        roleBadgeText.textContent = '🎓 Student Portal';
+
+        loginTitle.textContent = 'Student Sign In';
+        loginSubtitle.textContent = 'Sign in to report campus problems and track repair progress';
+
+        roleNotice.className = 'role-notice notice-student';
+        roleNoticeText.innerHTML = 'ℹ️ <strong>Students:</strong> Sign in with your university student ID or registered username.';
+
+        usernameLabel.textContent = 'Student ID / Username';
+        usernameInput.placeholder = 'e.g. student or your Student ID';
+
+        submitBtn.style.background = '';
+        submitBtn.style.borderColor = '';
+        submitBtnText.textContent = 'Sign In as Student →';
+
+        studentRegisterBox.style.display = 'block';
+        adminHelpBox.style.display = 'none';
+    }
+}
+
+function togglePasswordVisibility(inputId, iconId) {
+    var pwdInput = document.getElementById(inputId);
+    var icon = document.getElementById(iconId);
+    if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+        icon.style.color = '#60a5fa';
+    } else {
+        pwdInput.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+        icon.style.color = '#94a3b8';
+    }
+}
+</script>
+{% endblock %}
